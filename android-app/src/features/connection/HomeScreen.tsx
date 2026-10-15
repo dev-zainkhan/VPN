@@ -8,6 +8,9 @@ import type { Location, Protocol } from '../../types';
 
 type HomeScreenProps = {
   balance: number;
+  elapsed: string;
+  activeProtocol: 'UDP' | 'TCP' | null;
+  notice: string | null;
   connected: boolean;
   connecting: boolean;
   location: Location;
@@ -27,6 +30,9 @@ function formatBalance(minutes: number) {
 
 export function HomeScreen({
   balance,
+  elapsed,
+  activeProtocol,
+  notice,
   connected,
   connecting,
   location,
@@ -78,7 +84,7 @@ export function HomeScreen({
           {connecting
             ? 'Setting up a secure tunnel'
             : connected
-              ? 'Traffic encrypted · 00:14:32'
+              ? `Traffic encrypted · ${elapsed}`
               : 'Tap to connect · your IP is visible'}
         </Text>
       </View>
@@ -90,14 +96,14 @@ export function HomeScreen({
           style={({ pressed }) => [styles.locationCard, pressed && styles.pressed]}
         >
           <View style={styles.countryCode}>
-            <Text style={styles.codeText}>{location.code}</Text>
+            <Text style={styles.codeText}>{location.id === 'FAST' ? '⚡' : location.code}</Text>
           </View>
           <View style={styles.locationCopy}>
             <Text style={styles.countryCity}>
-              {location.code === 'FAST' ? 'Fastest location' : `${location.city}, ${location.country}`}
+              {location.id === 'FAST' ? 'Fastest location' : `${location.city}, ${location.country}`}
             </Text>
             <Text style={styles.locationDetail}>
-              {location.code === 'FAST' ? 'Picks the best server for you' : `Fastest location · ${location.ping} ms`}
+              {location.id === 'FAST' ? 'Picks the best server for you' : location.ping === null ? 'Tap to change location' : `${location.ping} ms`}
             </Text>
           </View>
           <Feather name="chevron-right" size={21} color={colors.secondary} />
@@ -105,9 +111,10 @@ export function HomeScreen({
         <View style={styles.protocolLine}>
           <Feather name="lock" size={15} color={colors.secondary} />
           <Text style={styles.protocolText}>
-            {connected ? `WireGuard · ${protocol === 'Auto' ? 'UDP' : protocol}` : `Protocol: ${protocol}`}
+            {connected && activeProtocol ? `WireGuard · ${activeProtocol}` : `Protocol: ${protocol}`}
           </Text>
         </View>
+        {notice && <Text style={styles.noticeText}>{notice}</Text>}
         <Pressable onPress={onOpenConnectionError} style={styles.helpLink}>
           <Text style={styles.helpText}>Having trouble connecting?</Text>
         </Pressable>
@@ -117,6 +124,13 @@ export function HomeScreen({
 }
 
 const styles = StyleSheet.create({
+  noticeText: {
+    color: colors.warning,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 10,
+  },
   content: {
     justifyContent: 'space-between',
     paddingTop: 8,

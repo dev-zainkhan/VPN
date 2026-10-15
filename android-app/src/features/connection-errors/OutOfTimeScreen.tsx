@@ -7,11 +7,12 @@ import { colors } from '../../theme/colors';
 
 type OutOfTimeScreenProps = {
   adsLeft: number;
+  minutesPerAd: number;
   onWatchAd: () => void;
   onNotNow: () => void;
 };
 
-export function OutOfTimeScreen({ adsLeft, onWatchAd, onNotNow }: OutOfTimeScreenProps) {
+export function OutOfTimeScreen({ adsLeft, minutesPerAd, onWatchAd, onNotNow }: OutOfTimeScreenProps) {
   return (
     <Screen contentStyle={styles.content}>
       <Header title="Time is up" onBack={onNotNow} />
@@ -21,7 +22,7 @@ export function OutOfTimeScreen({ adsLeft, onWatchAd, onNotNow }: OutOfTimeScree
         </View>
         <Text style={styles.title}>You're out of time</Text>
         <Text style={styles.description}>
-          Your VPN connection has ended. Watch a short ad to get 30 more minutes and reconnect.
+          Your VPN connection has ended. Watch a short ad to get {minutesPerAd} more minutes and reconnect.
         </Text>
         <View style={styles.balancePill}>
           <Text style={styles.balanceText}>Balance 0 min · {adsLeft} ads left today</Text>
@@ -29,7 +30,7 @@ export function OutOfTimeScreen({ adsLeft, onWatchAd, onNotNow }: OutOfTimeScree
       </View>
       <View style={styles.actions}>
         <Button disabled={adsLeft === 0} onPress={onWatchAd}>
-          {adsLeft === 0 ? 'Daily limit reached' : 'Watch ad · +30 min'}
+          {adsLeft === 0 ? 'Daily limit reached' : `Watch ad · +${minutesPerAd} min`}
         </Button>
         <Button onPress={onNotNow} variant="ghost">Not now</Button>
         <Text style={styles.demoNote}>Ad rewards are simulated in this UI preview.</Text>

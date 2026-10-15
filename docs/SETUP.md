@@ -19,7 +19,6 @@ Follow these steps in order. Each step ends with a check; do not move on until i
 cd C:\
 git clone https://github.com/dev-zainkhan/VPN.git veil
 cd veil
-git checkout backend-phase-1-3
 ```
 
 Check: `dir` shows `backend`, `admin-panel`, `android-app`, `deploy`, `docs`, `edge`.

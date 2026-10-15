@@ -6,16 +6,17 @@ import { Header } from '../../components/Header';
 import { LocationRow } from '../../components/LocationRow';
 import { Screen } from '../../components/Screen';
 import { colors } from '../../theme/colors';
-import type { Location } from '../../types';
-import { locations } from '../../types';
+import { FASTEST, type Location } from '../../types';
 
 type LocationsScreenProps = {
+  locations: Location[];
+  loading: boolean;
   selected: Location;
   onBack: () => void;
   onSelect: (location: Location) => void;
 };
 
-export function LocationsScreen({ selected, onBack, onSelect }: LocationsScreenProps) {
+export function LocationsScreen({ locations, loading, selected, onBack, onSelect }: LocationsScreenProps) {
   const [search, setSearch] = useState('');
   const filteredLocations = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -23,7 +24,7 @@ export function LocationsScreen({ selected, onBack, onSelect }: LocationsScreenP
     return locations.filter((location) =>
       `${location.country} ${location.city} ${location.code}`.toLowerCase().includes(query),
     );
-  }, [search]);
+  }, [search, locations]);
 
   return (
     <Screen scroll contentStyle={styles.content}>
@@ -49,9 +50,9 @@ export function LocationsScreen({ selected, onBack, onSelect }: LocationsScreenP
 
       <Pressable
         accessibilityRole="radio"
-        accessibilityState={{ selected: selected.code === 'FAST' }}
-        onPress={() => onSelect({ code: 'FAST', country: 'Fastest location', city: 'Automatic', ping: 0 })}
-        style={({ pressed }) => [styles.fastestCard, selected.code === 'FAST' && styles.fastestSelected, pressed && styles.pressed]}
+        accessibilityState={{ selected: selected.id === 'FAST' }}
+        onPress={() => onSelect(FASTEST)}
+        style={({ pressed }) => [styles.fastestCard, selected.id === 'FAST' && styles.fastestSelected, pressed && styles.pressed]}
       >
         <View style={styles.fastestIcon}>
           <Feather name="zap" size={21} color={colors.black} />
@@ -61,9 +62,9 @@ export function LocationsScreen({ selected, onBack, onSelect }: LocationsScreenP
           <Text style={styles.fastestDetail}>Picks the best server for you</Text>
         </View>
         <Feather
-          name={selected.code === 'FAST' ? 'check-circle' : 'circle'}
+          name={selected.id === 'FAST' ? 'check-circle' : 'circle'}
           size={22}
-          color={selected.code === 'FAST' ? colors.accent : colors.muted}
+          color={selected.id === 'FAST' ? colors.accent : colors.muted}
         />
       </Pressable>
 
@@ -71,17 +72,17 @@ export function LocationsScreen({ selected, onBack, onSelect }: LocationsScreenP
       <View style={styles.list}>
         {filteredLocations.map((location) => (
           <LocationRow
-            key={location.code}
+            key={location.id}
             location={location}
-            selected={selected.code === location.code}
+            selected={selected.id === location.id}
             onPress={() => onSelect(location)}
           />
         ))}
         {filteredLocations.length === 0 && (
           <View style={styles.emptyState}>
             <Feather name="map-pin" size={24} color={colors.muted} />
-            <Text style={styles.emptyTitle}>No locations found</Text>
-            <Text style={styles.emptyDetail}>Try another country or city.</Text>
+            <Text style={styles.emptyTitle}>{loading ? 'Loading locations…' : locations.length === 0 ? 'No locations online' : 'No locations found'}</Text>
+            <Text style={styles.emptyDetail}>{loading ? 'One moment.' : locations.length === 0 ? 'No server is running right now. Try again in a few minutes.' : 'Try another country or city.'}</Text>
           </View>
         )}
       </View>

@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from '../../components/Button';
 import { Header } from '../../components/Header';
 import { Screen } from '../../components/Screen';
@@ -8,23 +9,37 @@ import type { Protocol } from '../../types';
 
 type SettingsScreenProps = {
   protocol: Protocol;
-  killSwitch: boolean;
   onProtocolChange: (protocol: Protocol) => void;
-  onKillSwitchChange: (enabled: boolean) => void;
   onBack: () => void;
   onOpenConnectionError: () => void;
+  deviceId: string | null;
+  appVersion: string;
+  supportEmail: string | null;
+  testBuild: boolean;
+  apiBase: string;
+  onSaveApiBase: (value: string) => Promise<void>;
+};
+
+// Android's own setting: Always-on VPN and "Block connections without VPN" is the real kill switch.
+const openVpnSettings = () => {
+  Linking.sendIntent('android.settings.VPN_SETTINGS').catch(() => Linking.openSettings());
 };
 
 const protocols: Protocol[] = ['Auto', 'UDP', 'TCP'];
 
 export function SettingsScreen({
   protocol,
-  killSwitch,
   onProtocolChange,
-  onKillSwitchChange,
   onBack,
   onOpenConnectionError,
+  deviceId,
+  appVersion,
+  supportEmail,
+  testBuild,
+  apiBase,
+  onSaveApiBase,
 }: SettingsScreenProps) {
+  const [apiDraft, setApiDraft] = useState(apiBase);
   return (
     <Screen scroll contentStyle={styles.content}>
       <Header title="Settings" onBack={onBack} />
@@ -61,29 +76,10 @@ export function SettingsScreen({
           <Text style={styles.cardTitle}>Kill switch</Text>
         </View>
         <Text style={styles.description}>
-          Blocks internet if the VPN drops, so nothing leaks unprotected. Android's Always-on VPN
-          and “Block connections without VPN” provide system-level protection.
+          Blocks internet if the VPN drops, so nothing leaks unprotected. In Android's VPN settings,
+          tap the gear next to Veil and turn on “Always-on VPN” and “Block connections without VPN”.
         </Text>
-        <View style={styles.settingRow}>
-          <View style={styles.settingCopy}>
-            <Text style={styles.rowTitle}>Enable kill switch</Text>
-            <Text style={styles.rowDescription}>Demo preference only; Android VPN is not connected.</Text>
-          </View>
-          <Switch
-            accessibilityLabel="Enable kill switch"
-            onValueChange={onKillSwitchChange}
-            thumbColor={colors.text}
-            trackColor={{ false: colors.border, true: '#237C5B' }}
-            value={killSwitch}
-          />
-        </View>
-        <Button
-          onPress={() => Alert.alert(
-            'Android VPN settings',
-            'System VPN settings will be available after native VPN integration.',
-          )}
-          variant="secondary"
-        >
+        <Button onPress={openVpnSettings} variant="secondary">
           Open Android VPN settings
         </Button>
       </View>
@@ -106,7 +102,7 @@ export function SettingsScreen({
       <View style={styles.card}>
         <LinkRow
           title="Privacy policy"
-          onPress={() => Alert.alert('Privacy policy', 'The privacy policy will be available in the full release.')}
+          onPress={() => Alert.alert('Privacy policy', 'Veil keeps no record of the sites you visit or your traffic. The full policy will be linked here before release.')}
         />
         <View style={styles.divider} />
         <LinkRow
@@ -114,6 +110,44 @@ export function SettingsScreen({
           onPress={() => Alert.alert('Terms of use', 'The terms of use will be available in the full release.')}
         />
       </View>
+
+      <View style={styles.card}>
+        <SettingRow title="Device ID" description="Give this to support if you need help" value="" />
+        <Text selectable style={styles.mono}>{deviceId ?? 'Not registered yet'}</Text>
+        <View style={styles.divider} />
+        <SettingRow title="App version" description={supportEmail ? `Support: ${supportEmail}` : 'Veil for Android'} value={appVersion} />
+      </View>
+
+      {testBuild && (
+        <>
+          <Text style={styles.sectionLabel}>TEST BUILD</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Server address</Text>
+            <Text style={styles.description}>Where this test app finds the Veil API. Use your laptop's Wi-Fi address.</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              onChangeText={setApiDraft}
+              placeholder="http://192.168.1.20:3000"
+              placeholderTextColor={colors.muted}
+              style={styles.input}
+              value={apiDraft}
+            />
+            <Button
+              onPress={() => {
+                onSaveApiBase(apiDraft).then(
+                  () => Alert.alert('Saved', 'The app now uses this server.'),
+                  (e: Error) => Alert.alert('Not saved', e.message),
+                );
+              }}
+              variant="secondary"
+            >
+              Save address
+            </Button>
+          </View>
+        </>
+      )}
 
       <Pressable onPress={onOpenConnectionError} style={styles.helpCard}>
         <Feather name="help-circle" size={20} color={colors.accent} />
@@ -157,6 +191,21 @@ function LinkRow({ title, onPress }: { title: string; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  mono: {
+    color: colors.text,
+    fontFamily: 'monospace',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  input: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.text,
+    paddingHorizontal: 14,
+    marginVertical: 12,
+  },
   content: {
     gap: 14,
     paddingTop: 8,

@@ -24,8 +24,8 @@ export function LocationRow({ location, selected, onPress }: LocationRowProps) {
         <Text style={styles.country}>{location.country}</Text>
         <Text style={styles.city}>{location.city}</Text>
       </View>
-      <Text style={[styles.latency, location.ping >= 90 && styles.slowerLatency]}>
-        {location.ping} ms
+      <Text style={[styles.latency, location.ping !== null && location.ping >= 90 && styles.slowerLatency]}>
+        {location.ping === null ? '— ms' : `${location.ping} ms`}
       </Text>
       <View style={[styles.radio, selected && styles.radioSelected]}>
         {selected && <View style={styles.radioDot} />}

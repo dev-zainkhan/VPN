@@ -1,0 +1,81 @@
+name: Android test APK
+
+# Builds the Android app in GitHub's cloud (nothing to install on a laptop) and publishes it as
+# the "android-test" release, so the phone can always download the newest test build from:
+# https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil-test.apk
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-app/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: android-app
+    env:
+      # Test builds talk to the dev laptop on the same Wi-Fi; change it in the app's Settings too.
+      VEIL_API_BASE: ${{ vars.VEIL_API_BASE || 'http://192.168.18.84:3000' }}
+      VEIL_TEST_BUILD: 'true'
+      VEIL_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: android-app/package-lock.json
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Build the APK
+        working-directory: android-app/android
+        # 64-bit ARM covers practically every phone in use; one architecture keeps the build fast.
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+
+      - name: Publish to the android-test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk veil-test.apk
+          NOTES="Test build ${{ github.run_number }} from ${GITHUB_SHA::7}. API address: ${VEIL_API_BASE}"
+          if gh release view android-test >/dev/null 2>&1; then
+            gh release upload android-test veil-test.apk --clobber
+            gh release edit android-test --notes "$NOTES"
+          else
+            gh release create android-test veil-test.apk --prerelease --title "Android test build" --notes "$NOTES"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: veil-test-apk
+          path: android-app/veil-test.apk
+          retention-days: 14

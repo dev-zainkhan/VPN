@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.veilvpn'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.veilvpn"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // Official WireGuard userspace tunnel (wireguard-go) for Android.
+  implementation 'com.wireguard.android:tunnel:1.0.20230706'
+}
