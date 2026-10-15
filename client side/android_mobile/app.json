@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Veil",
+    "slug": "veil-vpn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.veil.vpn"
+    }
+  }
+}
