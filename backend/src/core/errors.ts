@@ -1,0 +1,51 @@
+// Every error code the API returns, with its HTTP status (spec 18.2).
+const STATUS = {
+  VALIDATION_FAILED: 400,
+  INVALID_PUBLIC_KEY: 400,
+  INSTANCE_TYPE_NOT_FREE: 400,
+  TOTP_CODE_WRONG: 400,
+  AWS_KEYS_INVALID: 400,
+  AWS_PERMISSION_MISSING: 400,
+  AWS_ROOT_KEYS: 400,
+  AWS_REGION_NOT_ENABLED: 400,
+  AWS_UNSUPPORTED: 400,
+  AUTH_REQUIRED: 401,
+  AUTH_INVALID: 401,
+  LOGIN_FAILED: 401,
+  TOTP_REQUIRED: 401,
+  TOTP_INVALID: 401,
+  BALANCE_EMPTY: 402,
+  BLOCKED: 403,
+  CSRF_FAILED: 403,
+  SSV_BAD_SIGNATURE: 403,
+  NOT_FOUND: 404,
+  REGION_UNAVAILABLE: 404,
+  PUBLIC_KEY_IN_USE: 409,
+  SERVER_STATE: 409,
+  AWS_ACCOUNT_EXISTS: 409,
+  AWS_ACCOUNT_MISMATCH: 409,
+  AWS_ACCOUNT_UNAVAILABLE: 409,
+  ACCOUNT_HAS_SERVERS: 409,
+  NO_FREE_TIER_TYPE: 409,
+  TOTP_ALREADY_ENABLED: 409,
+  DAILY_LIMIT_REACHED: 409,
+  AWS_LIMIT_REACHED: 409,
+  ACCOUNT_LOCKED: 423,
+  RATE_LIMITED: 429,
+  INTERNAL: 500,
+  AWS_ERROR: 502,
+  NO_SERVER_AVAILABLE: 503,
+  AWS_NO_CAPACITY: 503,
+} as const;
+
+export type ErrorCode = keyof typeof STATUS;
+
+export function statusFor(code: ErrorCode): number {
+  return STATUS[code];
+}
+
+export class AppError extends Error {
+  constructor(public code: ErrorCode, message?: string, public details?: unknown) {
+    super(message ?? code);
+  }
+}

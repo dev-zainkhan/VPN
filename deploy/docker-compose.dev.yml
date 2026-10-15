@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: veil
+      POSTGRES_USER: veil
+      POSTGRES_PASSWORD: veil_dev_password
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - veil_pg_dev:/var/lib/postgresql/data
+volumes:
+  veil_pg_dev:
