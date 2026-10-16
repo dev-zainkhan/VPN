@@ -557,7 +557,7 @@ function UsageMeter({ value, max, unit, credits }: { value: number; max: number 
   if (max === null) {
     return (
       <div className="usage-meter">
-        <div className="usage-value"><span>{value} {unit}</span><span>{credits ? 'credits' : 'no limit'}</span></div>
+        <div className="usage-value" style={{ justifyContent: 'flex-start' }}><span>{value} {unit} · {credits ? 'paid from credits' : 'no free limit'}</span></div>
       </div>
     );
   }
@@ -662,12 +662,12 @@ function AccountsPage({ onOpen, confirm, showToast, showError, refreshKey }: {
   showToast: (text: string) => void; showError: (e: unknown) => void; refreshKey: number;
 }) {
   const list = useLoad(() => api.accounts(), [refreshKey]);
-  const [menu, setMenu] = useState<string | null>(null);
+  const rowMenu = useRowMenu();
   const [busy, setBusy] = useState<string | null>(null);
   const accounts = list.data?.items ?? [];
 
   const run = async (id: string, fn: () => Promise<unknown>, done: string) => {
-    setMenu(null);
+    rowMenu.close();
     setBusy(id);
     try {
       await fn();
@@ -701,18 +701,18 @@ function AccountsPage({ onOpen, confirm, showToast, showError, refreshKey }: {
                 <td><UsageMeter value={a.usage.computeHours} max={a.usage.computeLimitHours} unit="h" credits /></td>
                 <td><UsageMeter value={a.usage.dataOutGb} max={a.usage.dataOutLimitGb} unit="GB" /></td>
                 <td className="actions-cell">
-                  <button className="icon-button table-menu-button" aria-label={`Actions for ${a.nickname}`} onClick={() => setMenu(menu === a.id ? null : a.id)}><MoreHorizontal size={18} /></button>
-                  {menu === a.id && (
-                    <div className="row-menu">
+                  <button className="icon-button table-menu-button" aria-label={`Actions for ${a.nickname}`} onClick={(e) => rowMenu.toggle(a.id, e.currentTarget)}><MoreHorizontal size={18} /></button>
+                  {rowMenu.openId === a.id && (
+                    <div className="row-menu" style={rowMenu.style}>
                       <button onClick={() => void run(a.id, () => api.testAccount(a.id), `${a.nickname}: AWS accepted the keys`)}>Test account</button>
-                      <button onClick={() => { setMenu(null); onOpen({ kind: 'keys', account: a }); }}>Update keys</button>
-                      <button onClick={() => { setMenu(null); onOpen({ kind: 'edit', account: a }); }}>Rename or change plan</button>
+                      <button onClick={() => { rowMenu.close(); onOpen({ kind: 'keys', account: a }); }}>Update keys</button>
+                      <button onClick={() => { rowMenu.close(); onOpen({ kind: 'edit', account: a }); }}>Rename or change plan</button>
                       {a.status !== 'keys_rejected' && (
                         <button onClick={() => void run(a.id, () => api.patchAccount(a.id, { status: a.status === 'disabled' ? 'working' : 'disabled' }), a.status === 'disabled' ? 'Account enabled' : 'Account disabled')}>
                           {a.status === 'disabled' ? 'Enable account' : 'Disable account'}
                         </button>
                       )}
-                      <button className="menu-danger" onClick={() => { setMenu(null); confirm({
+                      <button className="menu-danger" onClick={() => { rowMenu.close(); confirm({
                         title: `Remove ${a.nickname}?`,
                         text: a.serverCount > 0 ? `This account still has ${a.serverCount} server(s). Terminate them first.` : 'The stored keys are deleted. The AWS account itself is not touched.',
                         action: 'Remove account',
@@ -733,6 +733,54 @@ function AccountsPage({ onOpen, confirm, showToast, showError, refreshKey }: {
       <p className="page-note"><LockKeyhole size={14} />Keys are sent once over the API and stored encrypted. They are never shown again.</p>
     </>
   );
+}
+
+const MENU_HEIGHT = 190;
+// A row menu that floats above the page (fixed), so the table's own scroll box never cuts it off.
+// It follows its button when the page or the table scrolls.
+function useRowMenu() {
+  const [menu, setMenu] = useState<{ id: string; top: number; right: number } | null>(null);
+  const anchor = useRef<HTMLElement | null>(null);
+  const place = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    // Below the button, or above it when the button is near the bottom of the window.
+    const top = r.bottom + MENU_HEIGHT > window.innerHeight ? Math.max(8, r.top - MENU_HEIGHT) : r.bottom + 4;
+    return { top, right: Math.max(8, window.innerWidth - r.right) };
+  };
+  useEffect(() => {
+    if (!menu) return;
+    const follow = () => {
+      const el = anchor.current;
+      if (!el || !el.isConnected) return setMenu(null);
+      setMenu((m) => (m ? { ...m, ...place(el) } : m));
+    };
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as Element | null)?.closest?.('.row-menu, .table-menu-button')) setMenu(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenu(null);
+    };
+    window.addEventListener('scroll', follow, true);
+    window.addEventListener('resize', follow);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('scroll', follow, true);
+      window.removeEventListener('resize', follow);
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menu?.id]);
+  const toggle = (id: string, el: HTMLElement) => {
+    if (menu?.id === id) {
+      setMenu(null);
+      return;
+    }
+    anchor.current = el;
+    setMenu({ id, ...place(el) });
+  };
+  const style: React.CSSProperties | undefined = menu ? { position: 'fixed', top: menu.top, right: menu.right, zIndex: 60 } : undefined;
+  return { openId: menu?.id ?? null, toggle, close: () => setMenu(null), style };
 }
 
 function TabBar<T extends string>({ tabs, active, onChange }: { tabs: { value: T; label: string; count?: number }[]; active: T; onChange: (value: T) => void }) {
@@ -763,7 +811,7 @@ function ServersPage({ onShowInstall, status, onStatusChange, search, onSearch, 
     () => api.servers({ status: status === 'all' ? undefined : status, accountId: accountId || undefined, regionCode: regionCode || undefined, cursor, limit: 50 }),
     [status, accountId, regionCode, cursor, refreshKey],
   );
-  const [menu, setMenu] = useState<string | null>(null);
+  const rowMenu = useRowMenu();
 
   useEffect(() => setCursors([undefined]), [status, accountId, regionCode]);
 
@@ -787,7 +835,7 @@ function ServersPage({ onShowInstall, status, onStatusChange, search, onSearch, 
   ];
 
   const act = (s: Server, action: 'drain' | 'undrain' | 'reboot' | 'terminate') => {
-    setMenu(null);
+    rowMenu.close();
     const name = s.managed ? `${cityOf(s.regionName)} ${shortId(s.instanceId)}` : `${cityOf(s.regionName)} server (${s.providerName})`;
     const text = {
       drain: `${s.sessionCount} connected device(s) stay connected; no new devices are placed here.`,
@@ -811,7 +859,7 @@ function ServersPage({ onShowInstall, status, onStatusChange, search, onSearch, 
   };
 
   const showInstall = async (s: Server) => {
-    setMenu(null);
+    rowMenu.close();
     try {
       const { installCommand } = await api.newInstallCommand(s.id);
       onShowInstall(installCommand, s.providerName, s.regionName);
@@ -859,10 +907,10 @@ function ServersPage({ onShowInstall, status, onStatusChange, search, onSearch, 
                 <td><Toggle checked={s.visible} label={`Show ${cityOf(s.regionName)} server in the app`} onChange={(v) => void toggleVisible(s, v)} disabled={s.status === 'terminating' || s.status === 'terminated'} /></td>
                 <td className="actions-cell">
                   {s.status !== 'terminating' && s.status !== 'terminated' && (
-                    <button className="icon-button table-menu-button" aria-label={`Actions for ${s.instanceId ?? s.id}`} onClick={() => setMenu(menu === s.id ? null : s.id)}><MoreHorizontal size={18} /></button>
+                    <button className="icon-button table-menu-button" aria-label={`Actions for ${s.instanceId ?? s.id}`} onClick={(e) => rowMenu.toggle(s.id, e.currentTarget)}><MoreHorizontal size={18} /></button>
                   )}
-                  {menu === s.id && (
-                    <div className="row-menu">
+                  {rowMenu.openId === s.id && (
+                    <div className="row-menu" style={rowMenu.style}>
                       {s.status === 'active' && <button onClick={() => act(s, 'drain')}>Drain server</button>}
                       {s.status === 'draining' && <button onClick={() => act(s, 'undrain')}>Undrain server</button>}
                       {s.managed && s.instanceId && ['active', 'draining', 'failed'].includes(s.status) && <button onClick={() => act(s, 'reboot')}>Reboot server</button>}
