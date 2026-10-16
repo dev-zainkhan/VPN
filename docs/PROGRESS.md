@@ -22,7 +22,7 @@ Newest changes at the top of the log.
 | 11 | Hardening | Not started | — |
 | 12 | Launch | Not started | — |
 | — | Admin panel UI | Connected to the real API | In the browser against the local API: sign-in (wrong password message, success, session kept on reload, sign-out), dashboard, AWS accounts, servers (create form lists regions and free types from AWS), regions, devices (+15 min applied), rewards, settings saved, mobile layout; production build |
-| — | Android app UI | Prototype with demo data, no VPN tunnel or ads | Typechecks |
+| — | Android app | Real WireGuard VPN working on a phone; rewarded ads (AdMob) not yet | Built in GitHub Actions (release `android-test`); on an Infinix X6725 (Android 15): register (60 starter minutes), regions, VPN permission, connect over UDP to a real edge server in Mumbai, phone IP became the server's IP, minutes debited while connected |
 
 ## Decisions and open questions
 
@@ -57,6 +57,11 @@ Newest changes at the top of the log.
 | Rewards summary `rejects` counts today only | The spec does not say which period; it matches the `today` card |
 
 ## Log
+
+### 2026-10-16
+- Android app built in the cloud (GitHub Actions) and installed over USB; first real phone connection through a Veil edge server: IP changed to the Mumbai server, minutes debited.
+- Fixed a start-up crash: `@expo/vector-icons` pulled `expo-font` 57 (needs a newer Expo core than SDK 54); pinned `expo-font` ~14.0.12.
+- The test app's server address can now be changed on the "Can't reach Veil" screen (the laptop's Wi-Fi address changes).
 
 ### 2026-10-15
 - Admin panel connected to the API: demo data removed (`src/data.ts` → `src/format.ts`), new `src/api.ts`, Vite proxies `/api` to the backend.
