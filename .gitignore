@@ -4,3 +4,4 @@ dist/
 *.log
 backups/
 veil-keys*.json
+*.tmp.ts
