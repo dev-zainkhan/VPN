@@ -62,6 +62,12 @@ Newest changes at the top of the log.
 ## Log
 
 ### 2026-10-16
+- **Capacity test of one t3.micro VPN server** (Frankfurt, hidden from the app): 200 real WireGuard clients from a load generator in the same region, each downloading through the tunnel.
+  - 1 client unlimited: 1325 Mbit/s. 25 / 50 / 100 / 200 clients at 2 Mbit/s each: every client got its full 2 Mbit/s (up to 402 Mbit/s total), no failures; server CPU 0–10 %.
+  - Sustained: 150 clients x 2 Mbit/s for 12 minutes held 300 Mbit/s the whole time, CPU ~18 %, RAM ~37 %.
+  - AWS lists t3.micro at 64 Mbit/s baseline (burst to 5 Gbit/s); the burst lasted the whole test, longer runs may fall back towards the baseline. CPU and RAM are not the limit; bandwidth and its price are (AWS data out costs about $0.09/GB after the free 100 GB).
+  - Rough rule: one server handles 150–200 people at once comfortably (most use under 1 Mbit/s on average).
+- Admin panel shows the AWS free plan credits left and end date (needs `freetier:GetAccountPlanState`, added to `deploy/aws/create-veil-iam-user.sh`), with dashboard warnings below 20 USD or 30 days.
 - Mobile data (Jazz, tested from the phone) drops WireGuard handshakes over UDP on every port tried (51820, 8443, 3478, 40000, 2053, 51821) and most plain UDP; TCP-over-TLS 443 works. Auto mode now remembers per network type (Wi-Fi / mobile) which protocol worked and starts with it; choosing UDP on a blocking network shows why it fails. Verified on the phone: first connect UDP → TCP fallback, reconnect straight to TCP within 5 s.
 - **Cloud test environment on AWS** (credits): control server `https://13-126-168-194.sslip.io` (API + admin panel + database, HTTPS from Let's Encrypt via sslip.io, installed by `deploy/control/install.sh` in about 2 minutes) and VPN servers in Singapore, Mumbai and Frankfurt (active within a minute). Release and test APKs point at it. Costs about $1.6 a day while all four run.
 - VPN servers on any provider: admin panel → Create server → Any provider gives a one-time install command for any Ubuntu/Debian VPS (guide: `docs/ADD-SERVER.md`). The agent finds its public IP without AWS metadata. Tested on an Ubuntu 22.04 VM with metadata blocked: registered in under a minute, phone connected through it. Plus 10 API edge-case checks.
