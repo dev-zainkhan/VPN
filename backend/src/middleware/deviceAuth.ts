@@ -3,6 +3,7 @@ import { prisma } from '../core/db';
 import { AppError } from '../core/errors';
 import { ah } from '../core/http';
 import { logger } from '../core/logger';
+import { applyDailyMinutes } from '../modules/devices/dailyMinutes';
 
 const LAST_SEEN_EVERY_MS = 5 * 60 * 1000;
 
@@ -20,6 +21,13 @@ export const deviceAuth = ah(async (req, _res, next) => {
     include: { abuseKey: true },
   });
   if (!device) throw new AppError('AUTH_INVALID');
+
+  // The first request of the day fills up the daily free minutes.
+  const daily = await applyDailyMinutes(device);
+  if (daily) {
+    device.balanceSeconds = daily.balanceSeconds;
+    device.abuseKey.dailyTopUpDay = daily.day;
+  }
 
   req.device = device;
   req.deviceBlocked = device.abuseKey.blocked;

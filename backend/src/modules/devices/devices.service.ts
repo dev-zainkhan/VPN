@@ -3,6 +3,7 @@ import { config } from '../../core/config';
 import { hashAbuseKey, hashToken, randomToken } from '../../core/crypto';
 import { prisma } from '../../core/db';
 import { getSettings, utcDay } from '../settings/settings.service';
+import { nextDailyRefill } from './dailyMinutes';
 import type { RegisterBody } from './devices.schemas';
 
 // 8.2: starter minutes are given once per phone (per abuse key), never per install.
@@ -22,7 +23,8 @@ export async function registerDevice(input: RegisterBody) {
     const grantStarter = !abuseKey.blocked && !abuseKey.starterGranted;
     if (grantStarter) {
       balanceSeconds = settings.starterMinutes * 60;
-      await tx.abuseKey.update({ where: { keyHash }, data: { starterGranted: true } });
+      // The starter minutes count as today's free minutes.
+      await tx.abuseKey.update({ where: { keyHash }, data: { starterGranted: true, dailyTopUpDay: utcDay() } });
     }
 
     const created = await tx.device.create({
@@ -78,6 +80,8 @@ export async function getAppConfig() {
     minutesPerAd: settings.minutesPerAd,
     maxAdsPerDay: settings.maxAdsPerDay,
     lowMinutesWarningSeconds: settings.lowMinutesWarning * 60,
+    dailyFreeMinutes: settings.dailyFreeMinutes,
+    nextDailyRefillAt: nextDailyRefill().toISOString(),
     defaultProtocol: settings.defaultProtocol,
     supportEmail: settings.supportEmail,
     admobAdUnitId: config.ADMOB_AD_UNIT_ID,

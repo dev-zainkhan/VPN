@@ -54,6 +54,7 @@ enum WalletReason {
   starter
   ad_reward
   admin_adjust
+  daily
 }
 
 enum IntentStatus {
@@ -95,6 +96,8 @@ model Settings {
   id                Int             @id @default(1)
   minutesPerAd      Int             @default(30) @map("minutes_per_ad")
   starterMinutes    Int             @default(60) @map("starter_minutes")
+  // Every UTC day a device's balance is filled up to this many minutes (0 = off).
+  dailyFreeMinutes  Int             @default(60) @map("daily_free_minutes")
   maxAdsPerDay      Int             @default(10) @map("max_ads_per_day")
   lowMinutesWarning Int             @default(10) @map("low_minutes_warning")
   defaultProtocol   DefaultProtocol @default(auto) @map("default_protocol")
@@ -149,6 +152,9 @@ model AdminAudit {
 model AbuseKey {
   keyHash        String    @id @map("key_hash")
   starterGranted Boolean   @default(false) @map("starter_granted")
+  // UTC day (YYYY-MM-DD) this phone last got its daily free minutes; per phone, so a reinstall
+  // does not get them twice.
+  dailyTopUpDay  String?   @map("daily_top_up_day")
   blocked        Boolean   @default(false)
   blockedReason  String?   @map("blocked_reason")
   blockedAt      DateTime? @map("blocked_at")

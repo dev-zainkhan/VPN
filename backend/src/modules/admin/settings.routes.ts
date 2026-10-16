@@ -7,6 +7,7 @@ import { writeAudit } from './audit';
 const putBody = z.object({
   minutesPerAd: z.number().int().min(1).max(240),
   starterMinutes: z.number().int().min(0).max(1440),
+  dailyFreeMinutes: z.number().int().min(0).max(1440),
   maxAdsPerDay: z.number().int().min(1).max(100),
   lowMinutesWarning: z.number().int().min(1).max(120),
   defaultProtocol: z.enum(['auto', 'udp', 'tcp']),
