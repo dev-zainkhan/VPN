@@ -25,6 +25,8 @@ type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 type Phase = { kind: 'loading' } | { kind: 'welcome' } | { kind: 'ready' } | { kind: 'offline'; message: string };
 
 const PROTOCOL_KEY = 'veil.protocol';
+// Auto mode: the protocol that last worked, per network type ("veil.autoFirst.cellular").
+const AUTO_FIRST_KEY = 'veil.autoFirst.';
 const ME_POLL_MS = 60_000;
 const appVersion = Application.nativeApplicationVersion ?? '1.0.0';
 
@@ -63,6 +65,7 @@ function VeilApp() {
   const [now, setNow] = useState(Date.now());
   const [notice, setNotice] = useState<string | null>(null);
   const [lastLocationName, setLastLocationName] = useState('This location');
+  const [errorHint, setErrorHint] = useState<string | null>(null);
   const [addressDraft, setAddressDraft] = useState('');
   const connectingRef = useRef(false);
   const connectionRef = useRef<ConnectionStatus>('disconnected');
@@ -219,7 +222,8 @@ function VeilApp() {
       void loadRegions().catch(() => undefined);
       return;
     }
-    setLastLocationName(`${region.city}, ${region.country}`);
+    setLastLocationName(region.city === region.country ? region.city : `${region.city}, ${region.country}`);
+    setErrorHint(null);
     connectingRef.current = true;
     setConnection('connecting');
     try {
@@ -229,13 +233,18 @@ function VeilApp() {
         return;
       }
       // Auto: UDP first; if no handshake within 8 seconds, TCP on port 443 (spec 8.6).
-      const order: ('udp' | 'tcp')[] = protocol === 'UDP' ? ['udp'] : protocol === 'TCP' ? ['tcp'] : ['udp', 'tcp'];
+      // It remembers per network type what worked, so mobile data that blocks UDP goes straight to TCP.
+      const network = VeilVpn.networkType();
+      const autoFirst = (await SecureStore.getItemAsync(AUTO_FIRST_KEY + network)) === 'tcp' ? 'tcp' : 'udp';
+      const order: ('udp' | 'tcp')[] =
+        protocol === 'UDP' ? ['udp'] : protocol === 'TCP' ? ['tcp'] : autoFirst === 'tcp' ? ['tcp', 'udp'] : ['udp', 'tcp'];
       for (let i = 0; i < order.length; i++) {
         const p = order[i]!;
         const last = i === order.length - 1;
         const res = await api.connect(region.id, p, identity.publicKey);
         await VeilVpn.connect(tunnelConfig(res, identity.privateKey, appConfig?.tcpLocalPort ?? 51821));
-        if (await waitForHandshake(last ? 15000 : 8000)) {
+        if (await waitForHandshake(last ? 12000 : 8000)) {
+          if (protocol === 'Auto') void SecureStore.setItemAsync(AUTO_FIRST_KEY + network, p);
           setMe((m) => (m ? { ...m, balanceSeconds: res.balanceSeconds } : m));
           setMeAt(Date.now());
           setActiveProtocol(p === 'udp' ? 'UDP' : 'TCP');
@@ -247,6 +256,13 @@ function VeilApp() {
       }
       await api.disconnect().catch(() => undefined);
       setConnection('disconnected');
+      if (protocol === 'UDP') {
+        setErrorHint(
+          network === 'cellular'
+            ? 'Your mobile network blocks VPN traffic over UDP (common on mobile data). Choose Auto or TCP in Settings.'
+            : 'This network seems to block VPN traffic over UDP. Choose Auto or TCP in Settings.',
+        );
+      }
       setRoute('connectionError');
     } catch (e) {
       await VeilVpn.disconnect().catch(() => undefined);
@@ -390,6 +406,7 @@ function VeilApp() {
       return (
         <ConnectionErrorScreen
           location={lastLocationName}
+          hint={errorHint}
           onBack={backToHome}
           onRetry={() => {
             setRoute('home');

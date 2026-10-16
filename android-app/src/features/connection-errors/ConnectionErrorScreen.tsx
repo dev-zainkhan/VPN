@@ -7,6 +7,7 @@ import { colors } from '../../theme/colors';
 
 type ConnectionErrorScreenProps = {
   location: string;
+  hint?: string | null;
   onBack: () => void;
   onRetry: () => void;
   onChooseLocation: () => void;
@@ -15,6 +16,7 @@ type ConnectionErrorScreenProps = {
 
 export function ConnectionErrorScreen({
   location,
+  hint,
   onBack,
   onRetry,
   onChooseLocation,
@@ -29,10 +31,10 @@ export function ConnectionErrorScreen({
         </View>
         <Text style={styles.title}>Can't reach this location</Text>
         <Text style={styles.description}>
-          {location} isn't responding right now. Try again, or pick another location.
+          {hint ?? `${location} isn't responding right now. Try again, or pick another location.`}
         </Text>
         <Button onPress={onOpenSettings} variant="secondary">
-          On office or school Wi-Fi? Try TCP in Settings
+          On mobile data or office Wi-Fi? Try TCP in Settings
         </Button>
       </View>
       <View style={styles.actions}>

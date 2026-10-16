@@ -3,6 +3,8 @@ package expo.modules.veilvpn
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.VpnService
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
@@ -51,6 +53,24 @@ class VeilVpnModule : Module() {
 
     Function("publicKeyFor") { privateKey: String ->
       KeyPair(Key.fromBase64(privateKey)).publicKey.toBase64()
+    }
+
+    // "wifi", "cellular", "other" or "none": the network under the VPN, so Auto mode can remember
+    // what works on each (mobile networks often block WireGuard over UDP).
+    Function("networkType") {
+      val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+      @Suppress("DEPRECATION")
+      val caps = cm.allNetworks
+        .mapNotNull { cm.getNetworkCapabilities(it) }
+        .filter { !it.hasTransport(NetworkCapabilities.TRANSPORT_VPN) && it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) }
+        .sortedByDescending { it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) }
+        .firstOrNull()
+      when {
+        caps == null -> "none"
+        caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "wifi"
+        caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+        else -> "other"
+      }
     }
 
     Function("sha256Hex") { text: String ->

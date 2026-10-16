@@ -20,6 +20,7 @@ type NativeVeilVpn = {
   generateKeyPair(): { publicKey: string; privateKey: string };
   publicKeyFor(privateKey: string): string;
   sha256Hex(text: string): string;
+  networkType(): 'wifi' | 'cellular' | 'other' | 'none';
   prepare(): Promise<boolean>;
   connect(config: TunnelConfig): Promise<boolean>;
   disconnect(): Promise<boolean>;
