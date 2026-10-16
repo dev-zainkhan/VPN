@@ -15,7 +15,7 @@ export function peersResponse(peersVersion: number, ifNoneMatch: string | undefi
 export async function registerAgent(input: {
   serverId: string;
   bootstrapToken: string;
-  instanceId: string;
+  instanceId?: string | null;
   publicIp: string;
   wgPublicKey: string;
   tcpCertSha256: string;
@@ -26,9 +26,11 @@ export async function registerAgent(input: {
   if (!server.bootstrapTokenHash || !safeEqual(server.bootstrapTokenHash, hashToken(input.bootstrapToken))) {
     throw new AppError('AUTH_INVALID');
   }
-  // RunInstances has not returned yet; the agent retries.
-  if (!server.instanceId) throw new AppError('SERVER_STATE');
-  if (server.instanceId !== input.instanceId) throw new AppError('AUTH_INVALID');
+  if (server.managed) {
+    // RunInstances has not returned yet; the agent retries.
+    if (!server.instanceId) throw new AppError('SERVER_STATE');
+    if (server.instanceId !== input.instanceId) throw new AppError('AUTH_INVALID');
+  }
   const registrable =
     server.status === 'provisioning' || (server.status === 'failed' && server.failReason === 'never_registered');
   if (!registrable) throw new AppError('SERVER_STATE');
@@ -100,11 +102,14 @@ export async function report(server: Server, body: AgentReport) {
           ...(revive ? { status: 'active' as const, failReason: null, failDetail: null } : {}),
         },
       });
-      await tx.accountUsage.upsert({
-        where: { awsAccountId_month: { awsAccountId: server.awsAccountId, month } },
-        create: { awsAccountId: server.awsAccountId, month, txBytes: delta },
-        update: { txBytes: { increment: delta } },
-      });
+      // Free-tier data counting is per AWS account; servers on other providers have none.
+      if (server.awsAccountId) {
+        await tx.accountUsage.upsert({
+          where: { awsAccountId_month: { awsAccountId: server.awsAccountId, month } },
+          create: { awsAccountId: server.awsAccountId, month, txBytes: delta },
+          update: { txBytes: { increment: delta } },
+        });
+      }
       await applyReport(updated, body.peers, now, tx);
       const { peersVersion } = await tx.server.findUniqueOrThrow({
         where: { id: server.id },

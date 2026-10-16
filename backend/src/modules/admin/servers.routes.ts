@@ -16,6 +16,10 @@ const createBody = z.object({
   regionCode: z.string().min(1).max(32),
   instanceType: z.string().regex(/^[a-z0-9-]+\.[a-z0-9]+$/).optional(),
 });
+const manualBody = z.object({
+  regionCode: z.string().min(1).max(32),
+  providerName: z.string().trim().min(1).max(40),
+});
 const idParams = z.object({ id: z.string().uuid() });
 const patchBody = z.object({ visible: z.boolean() });
 
@@ -35,6 +39,27 @@ serversRouter.post(
     const server = await servers.createServer(body.awsAccountId, body.regionCode, body.instanceType);
     await writeAudit(req.admin!.id, 'server.create', 'server', server.id, body);
     res.status(201).json(await servers.getServerItem(server.id));
+  }),
+);
+
+// A server on any provider: returns the server and its one-time install command.
+serversRouter.post(
+  '/servers/manual',
+  ah(async (req, res) => {
+    const body = parse(manualBody, req.body);
+    const { server, installCommand } = await servers.createManualServer(body.regionCode, body.providerName);
+    await writeAudit(req.admin!.id, 'server.create_manual', 'server', server.id, body);
+    res.status(201).json({ server: await servers.getServerItem(server.id), installCommand });
+  }),
+);
+
+serversRouter.post(
+  '/servers/:id/install-command',
+  ah(async (req, res) => {
+    const { id } = parse(idParams, req.params);
+    const out = await servers.newInstallCommand(id);
+    await writeAudit(req.admin!.id, 'server.install_command', 'server', id);
+    res.json(out);
   }),
 );
 

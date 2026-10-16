@@ -100,7 +100,7 @@ export function HomeScreen({
           </View>
           <View style={styles.locationCopy}>
             <Text style={styles.countryCity}>
-              {location.id === 'FAST' ? 'Fastest location' : `${location.city}, ${location.country}`}
+              {location.id === 'FAST' ? 'Fastest location' : location.city === location.country ? location.city : `${location.city}, ${location.country}`}
             </Text>
             <Text style={styles.locationDetail}>
               {location.id === 'FAST' ? 'Picks the best server for you' : location.ping === null ? 'Tap to change location' : `${location.ping} ms`}

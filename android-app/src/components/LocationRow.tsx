@@ -22,7 +22,7 @@ export function LocationRow({ location, selected, onPress }: LocationRowProps) {
       </View>
       <View style={styles.locationText}>
         <Text style={styles.country}>{location.country}</Text>
-        <Text style={styles.city}>{location.city}</Text>
+        {location.city !== location.country && <Text style={styles.city}>{location.city}</Text>}
       </View>
       <Text style={[styles.latency, location.ping !== null && location.ping >= 90 && styles.slowerLatency]}>
         {location.ping === null ? '— ms' : `${location.ping} ms`}

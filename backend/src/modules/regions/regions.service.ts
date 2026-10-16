@@ -12,7 +12,8 @@ export function eligibleServerWhere(now = new Date()): Prisma.ServerWhereInput {
     lastReportAt: { gte: new Date(now.getTime() - REPORT_FRESH_MS) },
     wgPublicKey: { not: null },
     publicIp: { not: null },
-    awsAccount: { status: 'working' },
+    // AWS servers need a working account; servers added by hand have none.
+    OR: [{ managed: false }, { awsAccount: { status: 'working' } }],
   };
 }
 

@@ -36,8 +36,11 @@ export type Server = {
   id: string;
   regionCode: string;
   regionName: string;
-  accountId: string;
-  accountNickname: string;
+  accountId: string | null;
+  accountNickname: string | null;
+  // false = added by hand on any provider with an install command
+  managed: boolean;
+  providerName: string;
   instanceId: string | null;
   instanceType: string;
   publicIp: string | null;
@@ -245,6 +248,9 @@ export const api = {
     request<ServerList>('GET', `/servers${qs(q)}`),
   createServer: (awsAccountId: string, regionCode: string, instanceType?: string) =>
     request<Server>('POST', '/servers', { awsAccountId, regionCode, ...(instanceType ? { instanceType } : {}) }),
+  createManualServer: (regionCode: string, providerName: string) =>
+    request<{ server: Server; installCommand: string }>('POST', '/servers/manual', { regionCode, providerName }),
+  newInstallCommand: (id: string) => request<{ installCommand: string }>('POST', `/servers/${id}/install-command`, {}),
   serverAction: (id: string, action: 'drain' | 'undrain' | 'reboot' | 'terminate') =>
     request<Server>('POST', `/servers/${id}/${action}`, {}),
   setServerVisible: (id: string, visible: boolean) => request<Server>('PATCH', `/servers/${id}`, { visible }),

@@ -3,8 +3,8 @@ import { edgeSha, readEdgeText } from '../agent/edgeFiles';
 
 let template: string | null = null;
 
-// 12.6 step 6: EC2 user data for one server, base64-encoded.
-export function renderUserData(serverId: string, bootstrapToken: string): string {
+// 12.6 step 6: the setup script for one server (EC2 user data, or the install command's script).
+export function renderBootstrap(serverId: string, bootstrapToken: string): string {
   template ??= readEdgeText('bootstrap.sh.tpl');
   const values: Record<string, string> = {
     API_BASE: config.PUBLIC_BASE_URL,
@@ -16,5 +16,9 @@ export function renderUserData(serverId: string, bootstrapToken: string): string
   };
   let script = template;
   for (const [key, value] of Object.entries(values)) script = script.replaceAll(`{{${key}}}`, value);
-  return Buffer.from(script, 'utf8').toString('base64');
+  return script;
+}
+
+export function renderUserData(serverId: string, bootstrapToken: string): string {
+  return Buffer.from(renderBootstrap(serverId, bootstrapToken), 'utf8').toString('base64');
 }

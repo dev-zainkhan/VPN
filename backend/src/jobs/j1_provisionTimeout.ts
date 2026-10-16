@@ -16,7 +16,8 @@ export const j1ProvisionTimeout: Job = {
       data: { status: 'failed', failReason: 'never_registered', failDetail: 'No registration within 10 minutes' },
     });
     const stale = await prisma.server.findMany({
-      where: { status: 'failed', failReason: 'never_registered', launchedAt: { lt: new Date(now - 60 * MINUTE) } },
+      // Only AWS servers cost money while waiting; one added by hand stays until the admin acts.
+      where: { managed: true, status: 'failed', failReason: 'never_registered', launchedAt: { lt: new Date(now - 60 * MINUTE) } },
       select: { id: true },
     });
     let terminated = 0;

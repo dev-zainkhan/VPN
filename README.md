@@ -62,6 +62,7 @@ All under `/api/admin`. Sign-in sets an httpOnly cookie; every call except `GET`
 | `PUT /aws-accounts/:id/keys`, `POST /aws-accounts/:id/test`, `PATCH`, `DELETE /aws-accounts/:id` | Replace keys, recheck, rename/disable, remove |
 | `GET /aws-accounts/:id/regions`, `GET /aws-accounts/:id/regions/:code/instance-types` | Enabled regions, free-tier server types |
 | `GET/POST /servers` | List servers (with counts), launch one on EC2 |
+| `POST /servers/manual`, `POST /servers/:id/install-command` | Add a server on any provider (Contabo, Hetzner, …): returns a one-time install command (see `docs/ADD-SERVER.md`) |
 | `POST /servers/:id/drain`, `/undrain`, `/reboot`, `/terminate`, `PATCH /servers/:id` | Server actions, hide/show |
 | `GET/PUT /regions` | Region names and visibility |
 | `GET /devices`, `GET /devices/:id` | Devices by status, search by full device ID |

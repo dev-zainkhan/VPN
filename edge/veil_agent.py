@@ -11,7 +11,7 @@ import time
 import urllib.error
 import urllib.request
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 CONFIG_PATH = "/etc/veil/agent.json"
 TOKEN_PATH = "/etc/veil/agent_token"
 WG_PUB_PATH = "/etc/wireguard/server.pub"
@@ -57,6 +57,36 @@ def imds(path):
         return r.read().decode().strip()
 
 
+def is_public_ipv4(ip):
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return addr.version == 4 and addr.is_global
+
+
+def host_identity():
+    """(instance ID, public IPv4). On EC2 both come from instance metadata. On any other
+    provider there is no instance ID; the public IPv4 is the main interface's address, or,
+    behind NAT, what an IP echo service sees."""
+    try:
+        return imds("instance-id"), imds("public-ipv4")
+    except Exception:
+        pass
+    out = subprocess.run(["ip", "-4", "route", "get", "1.1.1.1"], capture_output=True, text=True).stdout.split()
+    if "src" in out and is_public_ipv4(out[out.index("src") + 1]):
+        return None, out[out.index("src") + 1]
+    for url in ("https://checkip.amazonaws.com", "https://api.ipify.org"):
+        try:
+            with urllib.request.urlopen(url, timeout=5) as r:
+                ip = r.read().decode().strip()
+            if is_public_ipv4(ip):
+                return None, ip
+        except Exception:
+            continue
+    raise RuntimeError("no public IPv4 address found")
+
+
 def read_text(path):
     with open(path) as f:
         return f.read().strip()
@@ -71,11 +101,12 @@ def register(cfg):
     delay = 5
     while True:
         try:
+            instance_id, public_ip = host_identity()
             body = {
                 "serverId": cfg["serverId"],
                 "bootstrapToken": cfg["bootstrapToken"],
-                "instanceId": imds("instance-id"),
-                "publicIp": imds("public-ipv4"),
+                "instanceId": instance_id,
+                "publicIp": public_ip,
                 "wgPublicKey": read_text(WG_PUB_PATH),
                 "tcpCertSha256": cert_sha256(),
                 "agentVersion": VERSION,

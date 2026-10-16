@@ -5,3 +5,4 @@ dist/
 backups/
 veil-keys*.json
 *.tmp.ts
+__pycache__/

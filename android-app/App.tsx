@@ -29,8 +29,10 @@ const ME_POLL_MS = 60_000;
 const appVersion = Application.nativeApplicationVersion ?? '1.0.0';
 
 function toLocation(r: RegionItem, ping: number | null): Location {
+  // "Mumbai, India" -> city Mumbai, country India; a single name like "Singapore" is both.
   const [city, ...rest] = r.displayName.split(',');
-  return { id: r.code, code: r.countryCode, city: city!.trim(), country: rest.join(',').trim() || r.countryCode, ping, pingHost: r.pingHost };
+  const cityName = city!.trim();
+  return { id: r.code, code: r.countryCode, city: cityName, country: rest.join(',').trim() || cityName, ping, pingHost: r.pingHost };
 }
 
 function formatElapsed(ms: number): string {

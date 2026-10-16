@@ -54,11 +54,15 @@ Newest changes at the top of the log.
 | A signed callback without `transaction_id` is answered `ok` and ignored | `AdReward.transactionId` is required; Google always sends it |
 | Admin devices tab `connected` / `offline` excludes blocked devices | The four tab counts then never overlap |
 | `GET /api/admin/servers` also returns `total` | Spec 7.8: every list has `total` |
+| Servers can be added by hand on any provider (`managed = false`, no AWS account): `POST /api/admin/servers/manual`, `POST /api/admin/servers/:id/install-command`, `GET /api/agent/v1/install/:id?token=` | AWS bandwidth is too expensive for a free VPN; cheap VPS providers include many TB |
+| The boot script also installs `python3`, opens the VPN ports in `ufw` when it is on, and prints its progress | Needed on VPS images outside AWS; the person running the command sees what happens |
+| Agent 1.1.0 registers without instance metadata (no instance ID; public IPv4 from the interface or an IP echo service) | Servers outside AWS |
 | Rewards summary `rejects` counts today only | The spec does not say which period; it matches the `today` card |
 
 ## Log
 
 ### 2026-10-16
+- VPN servers on any provider: admin panel → Create server → Any provider gives a one-time install command for any Ubuntu/Debian VPS (guide: `docs/ADD-SERVER.md`). The agent finds its public IP without AWS metadata. Tested on an Ubuntu 22.04 VM with metadata blocked: registered in under a minute, phone connected through it. Plus 10 API edge-case checks.
 - Android app built in the cloud (GitHub Actions) and installed over USB; first real phone connection through a Veil edge server: IP changed to the Mumbai server, minutes debited.
 - Fixed a start-up crash: `@expo/vector-icons` pulled `expo-font` 57 (needs a newer Expo core than SDK 54); pinned `expo-font` ~14.0.12.
 - The test app's server address can now be changed on the "Can't reach Veil" screen (the laptop's Wi-Fi address changes).

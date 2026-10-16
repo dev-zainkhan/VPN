@@ -75,6 +75,7 @@ type AccountDrawerMode = { kind: 'add' } | { kind: 'keys'; account: Account } | 
 type DrawerState =
   | { kind: 'account'; mode: AccountDrawerMode }
   | { kind: 'server' }
+  | { kind: 'install'; command: string; providerName: string; regionName: string }
   | { kind: 'device'; id: string }
   | null;
 
@@ -344,6 +345,7 @@ function Console({ me, refreshMe, onSignedOut }: { me: AdminMe; refreshMe: () =>
             )}
             {page === 'Servers' && (
               <ServersPage
+                onShowInstall={(command, providerName, regionName) => openDrawer({ kind: 'install', command, providerName, regionName })}
                 status={serverStatus}
                 onStatusChange={setServerStatus}
                 search={serverSearch}
@@ -379,7 +381,14 @@ function Console({ me, refreshMe, onSignedOut }: { me: AdminMe; refreshMe: () =>
               <AccountDrawer mode={drawer.mode} onClose={closeDrawer} onSaved={(text) => { showToast(text); dash.reload(); closeDrawer(); }} />
             )}
             {drawer.kind === 'server' && (
-              <ServerDrawer onClose={closeDrawer} onCreated={(text) => { showToast(text); dash.reload(); closeDrawer(); }} />
+              <ServerDrawer
+                onClose={closeDrawer}
+                onCreated={(text) => { showToast(text); dash.reload(); closeDrawer(); }}
+                onManualCreated={(command, providerName, regionName) => { dash.reload(); openDrawer({ kind: 'install', command, providerName, regionName }); }}
+              />
+            )}
+            {drawer.kind === 'install' && (
+              <InstallDrawer command={drawer.command} providerName={drawer.providerName} regionName={drawer.regionName} onClose={closeDrawer} showToast={showToast} />
             )}
             {drawer.kind === 'device' && (
               <DeviceDrawer id={drawer.id} onClose={closeDrawer} confirm={confirm} showToast={showToast} showError={showError} />
@@ -739,7 +748,8 @@ function serverTone(status: ServerStatus) {
 }
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function ServersPage({ status, onStatusChange, search, onSearch, onCreate, confirm, showToast, showError, refreshKey }: {
+function ServersPage({ onShowInstall, status, onStatusChange, search, onSearch, onCreate, confirm, showToast, showError, refreshKey }: {
+  onShowInstall: (command: string, providerName: string, regionName: string) => void;
   status: 'all' | ServerStatus; onStatusChange: (s: 'all' | ServerStatus) => void; search: string; onSearch: (v: string) => void;
   onCreate: () => void; confirm: (c: Confirm) => void; showToast: (t: string) => void; showError: (e: unknown) => void; refreshKey: number;
 }) {
@@ -766,7 +776,7 @@ function ServersPage({ status, onStatusChange, search, onSearch, onCreate, confi
   }, [changing, list.reload]);
 
   const q = search.trim().toLowerCase();
-  const rows = (list.data?.items ?? []).filter((s) => !q || `${s.id} ${s.instanceId ?? ''} ${s.regionName} ${s.regionCode} ${s.publicIp ?? ''} ${s.accountNickname}`.toLowerCase().includes(q));
+  const rows = (list.data?.items ?? []).filter((s) => !q || `${s.id} ${s.instanceId ?? ''} ${s.regionName} ${s.regionCode} ${s.publicIp ?? ''} ${s.accountNickname ?? ''} ${s.providerName}`.toLowerCase().includes(q));
   const counts = list.data?.counts;
   const tabs: { value: 'all' | ServerStatus; label: string; count?: number }[] = [
     { value: 'all', label: 'All', count: counts?.all },
@@ -778,17 +788,19 @@ function ServersPage({ status, onStatusChange, search, onSearch, onCreate, confi
 
   const act = (s: Server, action: 'drain' | 'undrain' | 'reboot' | 'terminate') => {
     setMenu(null);
-    const name = `${cityOf(s.regionName)} ${shortId(s.instanceId)}`;
+    const name = s.managed ? `${cityOf(s.regionName)} ${shortId(s.instanceId)}` : `${cityOf(s.regionName)} server (${s.providerName})`;
     const text = {
       drain: `${s.sessionCount} connected device(s) stay connected; no new devices are placed here.`,
       undrain: 'The server takes new connections again.',
       reboot: `${s.sessionCount} connected device(s) lose the connection for about a minute.`,
-      terminate: `The EC2 instance is deleted. ${s.sessionCount} connected device(s) are disconnected. This cannot be undone.`,
+      terminate: s.managed
+        ? `The EC2 instance is deleted. ${s.sessionCount} connected device(s) are disconnected. This cannot be undone.`
+        : `The server is removed from Veil and ${s.sessionCount} connected device(s) are disconnected. Then delete the VPS in your ${s.providerName} account yourself, or it keeps costing money.`,
     }[action];
     confirm({
-      title: `${capitalize(action)} ${name}?`,
+      title: `${action === 'terminate' && !s.managed ? 'Remove' : capitalize(action)} ${name}?`,
       text,
-      action: capitalize(action),
+      action: action === 'terminate' && !s.managed ? 'Remove' : capitalize(action),
       danger: action === 'terminate',
       onConfirm: async () => {
         await api.serverAction(s.id, action);
@@ -796,6 +808,17 @@ function ServersPage({ status, onStatusChange, search, onSearch, onCreate, confi
         void list.reload();
       },
     });
+  };
+
+  const showInstall = async (s: Server) => {
+    setMenu(null);
+    try {
+      const { installCommand } = await api.newInstallCommand(s.id);
+      onShowInstall(installCommand, s.providerName, s.regionName);
+      void list.reload();
+    } catch (e) {
+      showError(e);
+    }
   };
 
   const toggleVisible = async (s: Server, visible: boolean) => {
@@ -809,7 +832,7 @@ function ServersPage({ status, onStatusChange, search, onSearch, onCreate, confi
 
   return (
     <>
-      <PageHeading title="Servers" description="Every VPN server across your AWS accounts." action={<Button variant="primary" icon={<Plus size={17} />} onClick={onCreate}>Create server</Button>} />
+      <PageHeading title="Servers" description="Every VPN server, on AWS or on any other provider." action={<Button variant="primary" icon={<Plus size={17} />} onClick={onCreate}>Create server</Button>} />
       {list.error && <LoadError error={list.error} onRetry={() => void list.reload()} />}
       <section className="card table-card">
         <div className="table-toolbar">
@@ -825,12 +848,12 @@ function ServersPage({ status, onStatusChange, search, onSearch, onCreate, confi
             <thead><tr><th>Server</th><th>Account</th><th>Public IP</th><th>Status</th><th className="align-right">Devices</th><th className="align-right">CPU</th><th className="align-right">Uptime</th><th>In app</th><th aria-label="Actions" /></tr></thead>
             <tbody>{rows.map((s) => (
               <tr key={s.id}>
-                <td><div className="table-primary">{cityOf(s.regionName)}</div><div className="table-secondary mono">{shortId(s.instanceId)} · {s.regionCode} · {s.instanceType}</div></td>
-                <td>{s.accountNickname}</td><td className="mono">{s.publicIp ?? '—'}</td>
+                <td><div className="table-primary">{cityOf(s.regionName)}</div><div className="table-secondary mono">{s.managed ? `${shortId(s.instanceId)} · ${s.regionCode} · ${s.instanceType}` : `${s.regionCode} · added by hand`}</div></td>
+                <td>{s.managed ? s.accountNickname : <><div>{s.providerName}</div><div className="table-secondary">Any provider</div></>}</td><td className="mono">{s.publicIp ?? '—'}</td>
                 <td>
                   <StatusPill tone={serverTone(s.status)}>{capitalize(s.status)}</StatusPill>
                   {s.status === 'failed' && <div className="table-secondary" title={s.failDetail ?? ''}>{s.failReason?.replace(/_/g, ' ')}</div>}
-                  {s.status === 'provisioning' && <div className="table-secondary">Started {formatAgo(s.launchedAt)}</div>}
+                  {s.status === 'provisioning' && <div className="table-secondary">{s.managed ? `Started ${formatAgo(s.launchedAt)}` : `Waiting for install · added ${formatAgo(s.launchedAt).toLowerCase()}`}</div>}
                 </td>
                 <td className="align-right">{s.sessionCount}</td><td className="align-right">{s.cpuPct === null ? '—' : `${Math.round(s.cpuPct)}%`}</td><td className="align-right">{formatUptime(s.uptimeSeconds)}</td>
                 <td><Toggle checked={s.visible} label={`Show ${cityOf(s.regionName)} server in the app`} onChange={(v) => void toggleVisible(s, v)} disabled={s.status === 'terminating' || s.status === 'terminated'} /></td>
@@ -842,8 +865,9 @@ function ServersPage({ status, onStatusChange, search, onSearch, onCreate, confi
                     <div className="row-menu">
                       {s.status === 'active' && <button onClick={() => act(s, 'drain')}>Drain server</button>}
                       {s.status === 'draining' && <button onClick={() => act(s, 'undrain')}>Undrain server</button>}
-                      {s.instanceId && ['active', 'draining', 'failed'].includes(s.status) && <button onClick={() => act(s, 'reboot')}>Reboot server</button>}
-                      <button className="menu-danger" onClick={() => act(s, 'terminate')}>Terminate server</button>
+                      {s.managed && s.instanceId && ['active', 'draining', 'failed'].includes(s.status) && <button onClick={() => act(s, 'reboot')}>Reboot server</button>}
+                      {!s.managed && (s.status === 'provisioning' || (s.status === 'failed' && s.failReason === 'never_registered')) && <button onClick={() => void showInstall(s)}>Show install command</button>}
+                      <button className="menu-danger" onClick={() => act(s, 'terminate')}>{s.managed ? 'Terminate server' : 'Remove server'}</button>
                     </div>
                   )}
                 </td>
@@ -1361,7 +1385,12 @@ function AccountDrawer({ mode, onClose, onSaved }: { mode: AccountDrawerMode; on
   );
 }
 
-function ServerDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: (text: string) => void }) {
+function ServerDrawer({ onClose, onCreated, onManualCreated }: {
+  onClose: () => void;
+  onCreated: (text: string) => void;
+  onManualCreated: (command: string, providerName: string, regionName: string) => void;
+}) {
+  const [kind, setKind] = useState<'aws' | 'manual'>('manual');
   const accounts = useLoad(() => api.accounts(), []);
   const working = (accounts.data?.items ?? []).filter((a) => a.status === 'working');
   const [accountId, setAccountId] = useState('');
@@ -1381,8 +1410,30 @@ function ServerDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: 
   useEffect(() => setType(''), [accountId, region]);
   const account = working.find((a) => a.id === accountId);
 
+  const allRegions = useLoad(() => api.regions(), []);
+  const [providerName, setProviderName] = useState('Contabo');
+  const [manualRegion, setManualRegion] = useState('');
+  useEffect(() => {
+    const first = allRegions.data?.items[0];
+    if (!manualRegion && first) setManualRegion(first.code);
+  }, [allRegions.data, manualRegion]);
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (kind === 'manual') {
+      if (!providerName.trim() || !manualRegion) return;
+      setBusy(true);
+      setNotice(null);
+      try {
+        const out = await api.createManualServer(manualRegion, providerName.trim());
+        onManualCreated(out.installCommand, out.server.providerName, out.server.regionName);
+      } catch (e) {
+        setNotice({ tone: 'error', text: errorText(e) });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!accountId || !region) return;
     setBusy(true);
     setNotice(null);
@@ -1404,10 +1455,24 @@ function ServerDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   return (
     <form className="drawer-form" onSubmit={(e) => void submit(e)}>
-      <DrawerHeader title="Create server" description="Launches an EC2 instance that sets itself up as a VPN server." onClose={onClose} badge={<ServerIcon size={17} />} />
+      <DrawerHeader title="Create server" description="Add a VPN server: on any provider with one command, or launched on AWS automatically." onClose={onClose} badge={<ServerIcon size={17} />} />
       <div className="drawer-body">
-        {accounts.error && <Notice notice={{ tone: 'error', text: accounts.error }} />}
-        {accounts.data && working.length === 0 ? <div className="inline-alert inline-alert-error"><AlertTriangle size={16} />Add a working AWS account before creating a server.</div> : (
+        <fieldset className="instance-options">
+          <legend>Where</legend>
+          <label><input type="radio" name="serverKind" checked={kind === 'manual'} onChange={() => setKind('manual')} /><span><strong>Any provider</strong><small>Contabo, Hetzner, Oracle, … You rent the VPS; Veil gives one install command.</small></span><em>Cheapest</em></label>
+          <label><input type="radio" name="serverKind" checked={kind === 'aws'} onChange={() => setKind('aws')} /><span><strong>AWS, automatic</strong><small>Veil launches and removes the EC2 instance itself.</small></span><em>Uses AWS</em></label>
+        </fieldset>
+        {kind === 'manual' && (
+          <>
+            <DrawerField label="Provider name" help="Only for you, so you know where this server lives."><input value={providerName} maxLength={40} onChange={(e) => setProviderName(e.target.value)} placeholder="e.g. Contabo" /></DrawerField>
+            <DrawerField label="Location shown in the app" help="Pick the region closest to where the VPS really is.">
+              <select value={manualRegion} onChange={(e) => setManualRegion(e.target.value)}>{(allRegions.data?.items ?? []).map((r) => <option value={r.code} key={r.code}>{r.displayName} ({r.code})</option>)}</select>
+            </DrawerField>
+            <div className="next-steps"><strong>What you need</strong><span><i>1</i>A VPS with a fresh Ubuntu 22.04/24.04 or Debian 12 and a public IPv4 address.</span><span><i>2</i>Nothing else on ports UDP 51820 and TCP 443.</span><span><i>3</i>Next screen: copy one command, paste it into the VPS over SSH. It turns Active in about 2 minutes.</span></div>
+          </>
+        )}
+        {kind === 'aws' && accounts.error && <Notice notice={{ tone: 'error', text: accounts.error }} />}
+        {kind === 'aws' && (accounts.data && working.length === 0 ? <div className="inline-alert inline-alert-error"><AlertTriangle size={16} />Add a working AWS account before creating a server.</div> : (
           <>
             <DrawerField label="AWS account" help={usageHint}><select value={accountId} onChange={(e) => setAccountId(e.target.value)}>{working.map((a) => <option key={a.id} value={a.id}>{a.nickname}</option>)}</select></DrawerField>
             <DrawerField label="Region" help={regions.loading ? 'Asking AWS which regions are enabled…' : regions.error || undefined}>
@@ -1422,11 +1487,33 @@ function ServerDrawer({ onClose, onCreated }: { onClose: () => void; onCreated: 
             </fieldset>
             <div className="next-steps"><strong>What happens next</strong><span><i>1</i>The instance launches with only UDP 51820 and TCP 443 open, no SSH.</span><span><i>2</i>On first boot it installs WireGuard and the Veil agent.</span><span><i>3</i>It registers and turns Active, usually within 1–4 minutes.</span></div>
           </>
-        )}
+        ))}
         <Notice notice={notice} />
       </div>
-      <div className="drawer-footer"><Button onClick={onClose}>Cancel</Button><Button type="submit" variant="primary" icon={<Plus size={16} />} disabled={busy || !accountId || !region}>{busy ? 'Launching…' : 'Create server'}</Button></div>
+      <div className="drawer-footer"><Button onClick={onClose}>Cancel</Button><Button type="submit" variant="primary" icon={<Plus size={16} />} disabled={busy || (kind === 'aws' ? !accountId || !region : !providerName.trim() || !manualRegion)}>{busy ? 'Working…' : kind === 'aws' ? 'Create server' : 'Get install command'}</Button></div>
     </form>
+  );
+}
+
+function InstallDrawer({ command, providerName, regionName, onClose, showToast }: {
+  command: string; providerName: string; regionName: string; onClose: () => void; showToast: (t: string) => void;
+}) {
+  return (
+    <div className="drawer-form">
+      <DrawerHeader title="Install command" description={`${providerName} · shown in the app as ${regionName}`} onClose={onClose} badge={<ServerIcon size={17} />} />
+      <div className="drawer-body">
+        <div className="inline-alert inline-alert-warning"><ShieldAlert size={16} /><span>This command works once and contains a secret key. Do not share it. If you lose it, use “Show install command” on the Servers page for a new one.</span></div>
+        <div className="next-steps">
+          <strong>Steps</strong>
+          <span><i>1</i>Log in to your VPS with SSH as root. The IP address and password are in your {providerName} account.</span>
+          <span><i>2</i>Paste the command below and press Enter. It takes 1–3 minutes.</span>
+          <span><i>3</i>When it prints “Veil server is set up”, this server turns Active on the Servers page.</span>
+        </div>
+        <code className="mono" style={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: 12, borderRadius: 9, background: '#f4f7f5', fontSize: 11 }}>{command}</code>
+        <button className="button button-secondary test-keys" type="button" onClick={() => { void navigator.clipboard?.writeText(command).then(() => showToast('Command copied')); }}><Copy size={16} />Copy command</button>
+      </div>
+      <div className="drawer-footer"><Button variant="primary" onClick={onClose}>Done</Button></div>
+    </div>
   );
 }
 

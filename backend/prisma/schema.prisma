@@ -237,8 +237,11 @@ model AccountUsage {
 
 model Server {
   id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  awsAccountId       String            @map("aws_account_id") @db.Uuid
-  awsAccount         AwsAccount        @relation(fields: [awsAccountId], references: [id])
+  // managed = launched by the API on AWS; otherwise added by hand on any provider (install command).
+  managed            Boolean           @default(true)
+  providerName       String?           @map("provider_name")
+  awsAccountId       String?           @map("aws_account_id") @db.Uuid
+  awsAccount         AwsAccount?       @relation(fields: [awsAccountId], references: [id])
   regionCode         String            @map("region_code")
   region             Region            @relation(fields: [regionCode], references: [code])
   instanceId         String?           @unique @map("instance_id")

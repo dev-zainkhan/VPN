@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-exec > /var/log/veil-bootstrap.log 2>&1
+# Logged to a file; also shown on screen when run by hand with the install command.
+exec > >(tee -a /var/log/veil-bootstrap.log) 2>&1
 
 API_BASE="{{API_BASE}}"
 SERVER_ID="{{SERVER_ID}}"
@@ -11,7 +12,13 @@ FW_SHA256="{{FW_SHA256}}"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get install -y wireguard-tools iptables curl openssl
+apt-get install -y wireguard-tools iptables curl openssl python3
+
+# VPS images from some providers (not AWS) ship with ufw on; open the two VPN ports there.
+if command -v ufw >/dev/null 2>&1 && ufw status | grep -q 'Status: active'; then
+  ufw allow 51820/udp
+  ufw allow 443/tcp
+fi
 
 cat > /etc/sysctl.d/99-veil.conf <<'EOF'
 net.ipv4.ip_forward = 1
@@ -92,3 +99,4 @@ systemctl daemon-reload
 systemctl enable --now wg-quick@wg0
 systemctl enable --now veil-tcpgw
 systemctl enable --now veil-agent
+echo "Veil server is set up. It turns Active in the admin panel within a minute."

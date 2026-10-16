@@ -11,14 +11,15 @@ import {
   type EC2Client,
 } from '@aws-sdk/client-ec2';
 import type { AwsAccount, Prisma, Region, Server, ServerStatus } from '@prisma/client';
-import { hashToken, randomToken } from '../../core/crypto';
+import { hashToken, randomToken, safeEqual } from '../../core/crypto';
 import { prisma } from '../../core/db';
 import { AppError } from '../../core/errors';
 import { decodeCursor, pageOf } from '../../core/pagination';
 import { endServerSessions } from '../connections/connections.service';
 import { freeTierTypes } from './awsAccounts.service';
 import { awsCall, ec2For, keysOf } from './awsClient';
-import { renderUserData } from './bootstrap';
+import { renderBootstrap, renderUserData } from './bootstrap';
+import { config } from '../../core/config';
 
 const CANONICAL_OWNER = '099720109477';
 const UBUNTU_NAME = 'ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*';
@@ -250,9 +251,11 @@ export async function rebootServer(id: string) {
   const server = await findServer(id);
   requireStatus(server, ['active', 'draining', 'failed']);
   const instanceId = server.instanceId;
-  if (!instanceId) throw new AppError('SERVER_STATE');
-  await awsCall(server.awsAccount, 'ec2:RebootInstances', () =>
-    ec2For(server.awsAccount, server.regionCode).send(new RebootInstancesCommand({ InstanceIds: [instanceId] })),
+  const account = server.awsAccount;
+  // Servers added by hand are rebooted at their provider.
+  if (!instanceId || !account) throw new AppError('SERVER_STATE');
+  await awsCall(account, 'ec2:RebootInstances', () =>
+    ec2For(account, server.regionCode).send(new RebootInstancesCommand({ InstanceIds: [instanceId] })),
   );
   return server;
 }
@@ -274,20 +277,68 @@ export async function terminateServer(id: string) {
     await endServerSessions(id, tx);
     return tx.server.update({
       where: { id },
-      data: server.instanceId
+      data: server.instanceId && server.awsAccount
         ? { status: 'terminating', bootstrapTokenHash: null }
         : { status: 'terminated', terminatedAt: new Date(), bootstrapTokenHash: null },
     });
   });
   // If this call fails, job J2 sends it again for servers left in terminating.
-  if (server.instanceId) await sendTerminate(server.awsAccount, server.regionCode, server.instanceId);
+  // A server added by hand is only removed from Veil; its VPS is deleted at the provider.
+  if (server.instanceId && server.awsAccount) await sendTerminate(server.awsAccount, server.regionCode, server.instanceId);
   return updated;
+}
+
+// A server on any provider (Contabo, Hetzner, ...): Veil makes the row and a one-line install
+// command; running it on a fresh Ubuntu/Debian VPS sets the server up and registers it.
+function installCommand(serverId: string, token: string): string {
+  return `curl -fsSL "${config.PUBLIC_BASE_URL}/api/agent/v1/install/${serverId}?token=${token}" | sudo bash`;
+}
+
+const waitingToRegister = (s: Server) =>
+  s.status === 'provisioning' || (s.status === 'failed' && s.failReason === 'never_registered');
+
+export async function createManualServer(regionCode: string, providerName: string) {
+  if (!(await prisma.region.findUnique({ where: { code: regionCode } }))) throw new AppError('NOT_FOUND');
+  const token = randomToken();
+  const server = await prisma.server.create({
+    data: {
+      managed: false,
+      providerName,
+      regionCode,
+      instanceType: 'vps',
+      status: 'provisioning',
+      bootstrapTokenHash: hashToken(token),
+      launchedAt: new Date(),
+    },
+  });
+  return { server, installCommand: installCommand(server.id, token) };
+}
+
+// A new command for a hand-added server that has not registered yet (the old one stops working).
+export async function newInstallCommand(id: string) {
+  const server = await findServer(id);
+  if (server.managed) throw new AppError('SERVER_STATE', 'Only servers added by hand have an install command');
+  if (!waitingToRegister(server)) throw new AppError('SERVER_STATE');
+  const token = randomToken();
+  await prisma.server.update({
+    where: { id },
+    data: { bootstrapTokenHash: hashToken(token), status: 'provisioning', failReason: null, failDetail: null, launchedAt: new Date() },
+  });
+  return { installCommand: installCommand(id, token) };
+}
+
+// GET /api/agent/v1/install/:id: the setup script for a hand-added server; the token is the key.
+export async function installScript(id: string, token: string): Promise<string | null> {
+  const server = await prisma.server.findUnique({ where: { id } });
+  if (!server || server.managed || !server.bootstrapTokenHash || !waitingToRegister(server)) return null;
+  if (!safeEqual(server.bootstrapTokenHash, hashToken(token))) return null;
+  return renderBootstrap(server.id, token);
 }
 
 // 13.4 server item
 type ServerRow = Server & {
   region: Region;
-  awsAccount: AwsAccount;
+  awsAccount: AwsAccount | null;
   _count: { sessions: number };
 };
 export const serverInclude = {
@@ -303,7 +354,9 @@ export function serverItem(s: ServerRow, now = new Date()) {
     regionCode: s.regionCode,
     regionName: s.region.displayName,
     accountId: s.awsAccountId,
-    accountNickname: s.awsAccount.nickname,
+    accountNickname: s.awsAccount?.nickname ?? null,
+    managed: s.managed,
+    providerName: s.managed ? 'AWS' : (s.providerName ?? 'Other'),
     instanceId: s.instanceId,
     instanceType: s.instanceType,
     publicIp: s.publicIp,
