@@ -6,3 +6,4 @@ backups/
 veil-keys*.json
 *.tmp.ts
 __pycache__/
+*.tmp.sh
