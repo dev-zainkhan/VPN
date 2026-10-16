@@ -228,7 +228,7 @@ function VeilApp() {
     setConnection('connecting');
     try {
       if (!(await VeilVpn.prepare())) {
-        setNotice('Veil needs permission to set up a VPN. Tap connect and choose OK.');
+        setNotice('Raaz VPN needs permission to set up a VPN. Tap connect and choose OK.');
         setConnection('disconnected');
         return;
       }
@@ -316,7 +316,7 @@ function VeilApp() {
   if (phase.kind === 'offline') {
     return (
       <View style={styles.center}>
-        <Text style={styles.title}>Can't reach Veil</Text>
+        <Text style={styles.title}>Can't reach Raaz VPN</Text>
         <Text style={styles.body}>{phase.message}</Text>
         {isTestBuild && (
           <View style={styles.actions}>

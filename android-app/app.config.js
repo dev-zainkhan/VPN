@@ -19,5 +19,6 @@ module.exports = ({ config }) => ({
     // A test build talks to the laptop over plain http; a store build only uses https.
     ['expo-build-properties', { android: { usesCleartextTraffic: testBuild } }],
     './plugins/withDesugaring',
+    './plugins/withReleaseSigning',
   ],
 });

@@ -77,7 +77,7 @@ export function SettingsScreen({
         </View>
         <Text style={styles.description}>
           Blocks internet if the VPN drops, so nothing leaks unprotected. In Android's VPN settings,
-          tap the gear next to Veil and turn on “Always-on VPN” and “Block connections without VPN”.
+          tap the gear next to Raaz VPN and turn on “Always-on VPN” and “Block connections without VPN”.
         </Text>
         <Button onPress={openVpnSettings} variant="secondary">
           Open Android VPN settings
@@ -102,12 +102,12 @@ export function SettingsScreen({
       <View style={styles.card}>
         <LinkRow
           title="Privacy policy"
-          onPress={() => Alert.alert('Privacy policy', 'Veil keeps no record of the sites you visit or your traffic. The full policy will be linked here before release.')}
+          onPress={() => { Linking.openURL(`${apiBase}/privacy.html`).catch(() => undefined); }}
         />
         <View style={styles.divider} />
         <LinkRow
           title="Terms of use"
-          onPress={() => Alert.alert('Terms of use', 'The terms of use will be available in the full release.')}
+          onPress={() => { Linking.openURL(`${apiBase}/terms.html`).catch(() => undefined); }}
         />
       </View>
 
@@ -115,7 +115,7 @@ export function SettingsScreen({
         <SettingRow title="Device ID" description="Give this to support if you need help" value="" />
         <Text selectable style={styles.mono}>{deviceId ?? 'Not registered yet'}</Text>
         <View style={styles.divider} />
-        <SettingRow title="App version" description={supportEmail ? `Support: ${supportEmail}` : 'Veil for Android'} value={appVersion} />
+        <SettingRow title="App version" description={supportEmail ? `Support: ${supportEmail}` : 'Raaz VPN for Android'} value={appVersion} />
       </View>
 
       {testBuild && (
@@ -123,7 +123,7 @@ export function SettingsScreen({
           <Text style={styles.sectionLabel}>TEST BUILD</Text>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Server address</Text>
-            <Text style={styles.description}>Where this test app finds the Veil API. Use your laptop's Wi-Fi address.</Text>
+            <Text style={styles.description}>Where this test app finds the Raaz API. Use your laptop's Wi-Fi address.</Text>
             <TextInput
               autoCapitalize="none"
               autoCorrect={false}

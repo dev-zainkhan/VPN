@@ -1,12 +1,18 @@
 {
   "expo": {
-    "name": "Veil",
-    "slug": "veil-vpn",
+    "name": "Raaz VPN",
+    "slug": "raaz-vpn",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
-      "package": "com.veil.vpn"
-    }
+      "package": "com.raazvpn.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
+        "backgroundColor": "#0B141B"
+      }
+    },
+    "icon": "./assets/brand/icon.png",
+    "backgroundColor": "#090D12"
   }
 }

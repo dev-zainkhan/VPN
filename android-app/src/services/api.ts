@@ -75,7 +75,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
       signal: controller.signal,
     });
   } catch {
-    throw new ApiError(0, 'NETWORK', 'Cannot reach the Veil server. Check your internet connection.');
+    throw new ApiError(0, 'NETWORK', 'Cannot reach the Raaz server. Check your internet connection.');
   } finally {
     clearTimeout(timer);
   }

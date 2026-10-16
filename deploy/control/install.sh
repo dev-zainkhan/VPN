@@ -98,6 +98,14 @@ mkdir -p /var/www/veil-admin
 rm -rf /var/www/veil-admin/*
 cp -r $APP/repo/admin-panel/dist/. /var/www/veil-admin/
 
+echo "== public pages (privacy policy, terms)"
+# The support e-mail shown on them: VEIL_SUPPORT_EMAIL, remembered in $APP/support-email.
+[ -n "${VEIL_SUPPORT_EMAIL:-}" ] && echo "$VEIL_SUPPORT_EMAIL" > $APP/support-email
+SUPPORT_EMAIL=$(cat $APP/support-email 2>/dev/null || echo "$ADMIN_EMAIL")
+for f in $APP/repo/deploy/control/site/*.html; do
+  sed "s#{{SUPPORT_EMAIL}}#$SUPPORT_EMAIL#g" "$f" > /var/www/veil-admin/$(basename "$f")
+done
+
 echo "== services"
 cat > /etc/systemd/system/veil-api.service <<EOF
 [Unit]

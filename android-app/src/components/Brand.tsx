@@ -6,7 +6,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.brand}>
       <Feather name="shield" size={compact ? 26 : 30} color={colors.accent} />
-      <Text style={[styles.name, compact && styles.compactName]}>Veil</Text>
+      <Text style={[styles.name, compact && styles.compactName]}>Raaz</Text>
     </View>
   );
 }

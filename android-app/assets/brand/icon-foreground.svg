@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Android adaptive icon foreground: transparent, artwork inside the central safe zone (~66%). -->
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5EF0B8"/>
+      <stop offset="1" stop-color="#2FC88D"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(512 512) scale(0.62) translate(-512 -521)">
+    <path d="M512 196 L756 290 V506 C756 672 650 790 512 846 C374 790 268 672 268 506 V290 Z"
+          fill="none" stroke="url(#shield)" stroke-width="56" stroke-linejoin="round"/>
+    <circle cx="512" cy="478" r="70" fill="url(#shield)"/>
+    <path d="M478 520 H546 L568 664 H456 Z" fill="url(#shield)"/>
+  </g>
+</svg>

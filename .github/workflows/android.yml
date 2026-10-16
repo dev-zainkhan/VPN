@@ -1,10 +1,15 @@
-name: Android APKs
+name: Android builds
 
-# Builds the Android app in GitHub's cloud (nothing to install on a laptop) and publishes two APKs
-# in the "android-test" release; a phone can always download the newest ones from:
-#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil.apk       (release)
-#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil-test.apk  (test)
-# The test APK can switch to another API address in Settings; the release APK cannot.
+# Builds the Android app in GitHub's cloud (nothing to install on a laptop) and publishes it in the
+# "android-test" release, so a phone can always download the newest build from:
+#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/raaz.apk       (release APK)
+#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/raaz-test.apk  (test APK)
+# and, when the upload key secrets are set, the Google Play bundle raaz-play.aab (signed with the
+# upload key; Google re-signs it with the app signing key).
+#
+# Repository secrets for the Play bundle:
+#   RAAZ_UPLOAD_KEYSTORE_B64  base64 of the upload keystore (.jks)
+#   RAAZ_UPLOAD_PASSWORD      its store and key password (alias raaz-upload)
 
 on:
   push:
@@ -22,7 +27,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # The Veil API both APKs talk to. Set the repository variable VEIL_API_BASE to change it.
+  # The API the app talks to. Set the repository variable VEIL_API_BASE to change it.
   VEIL_API_BASE: ${{ vars.VEIL_API_BASE || 'https://13-126-168-194.sslip.io' }}
 
 jobs:
@@ -36,66 +41,112 @@ jobs:
         run: |
           gh release view android-test >/dev/null 2>&1 || \
             gh release create android-test --prerelease --title "Android builds" --notes "Building…"
+          # Files from before the rename to Raaz VPN.
+          gh release delete-asset android-test veil.apk -y 2>/dev/null || true
+          gh release delete-asset android-test veil-test.apk -y 2>/dev/null || true
 
   build:
     needs: release-page
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
         include:
           - variant: release
             test_build: 'false'
-            apk: veil.apk
+            file: raaz.apk
           - variant: test
             test_build: 'true'
-            apk: veil-test.apk
+            file: raaz-test.apk
+          - variant: play
+            test_build: 'false'
+            file: raaz-play.aab
     defaults:
       run:
         working-directory: android-app
     env:
       VEIL_TEST_BUILD: ${{ matrix.test_build }}
       VEIL_BUILD_NUMBER: ${{ github.run_number }}
+      UPLOAD_KEYSTORE_B64: ${{ secrets.RAAZ_UPLOAD_KEYSTORE_B64 }}
+      UPLOAD_PASSWORD: ${{ secrets.RAAZ_UPLOAD_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip the Play bundle when the upload key is not set
+        id: gate
+        run: |
+          if [ "${{ matrix.variant }}" = "play" ] && [ -z "$UPLOAD_KEYSTORE_B64" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::RAAZ_UPLOAD_KEYSTORE_B64 is not set; no Play bundle this time."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-java@v4
+        if: steps.gate.outputs.skip == 'false'
         with:
           distribution: temurin
           java-version: '17'
 
       - uses: actions/setup-node@v4
+        if: steps.gate.outputs.skip == 'false'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: android-app/package-lock.json
 
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.gate.outputs.skip == 'false'
 
       - name: Install JavaScript dependencies
+        if: steps.gate.outputs.skip == 'false'
         run: npm ci
 
       - name: Typecheck
+        if: steps.gate.outputs.skip == 'false'
         run: npx tsc --noEmit
 
+      - name: Upload key (Play bundle only)
+        if: steps.gate.outputs.skip == 'false' && matrix.variant == 'play'
+        run: |
+          echo "$UPLOAD_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          {
+            echo "RAAZ_UPLOAD_STORE_FILE=$RUNNER_TEMP/upload.jks"
+            echo "RAAZ_UPLOAD_STORE_PASSWORD=$UPLOAD_PASSWORD"
+            echo "RAAZ_UPLOAD_KEY_PASSWORD=$UPLOAD_PASSWORD"
+            echo "RAAZ_UPLOAD_KEY_ALIAS=raaz-upload"
+          } >> "$GITHUB_ENV"
+
       - name: Generate the Android project
+        if: steps.gate.outputs.skip == 'false'
         run: npx expo prebuild --platform android --no-install --clean
 
-      - name: Build the APK
+      - name: Build
+        if: steps.gate.outputs.skip == 'false'
         working-directory: android-app/android
-        # 64-bit ARM covers practically every phone in use; one architecture keeps the build fast.
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+        run: |
+          if [ "${{ matrix.variant }}" = "play" ]; then
+            # Google Play gets every phone architecture.
+            ./gradlew bundleRelease --no-daemon
+            cp app/build/outputs/bundle/release/app-release.aab ../${{ matrix.file }}
+          else
+            # 64-bit ARM covers practically every phone in use; one architecture keeps the build fast.
+            ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+            cp app/build/outputs/apk/release/app-release.apk ../${{ matrix.file }}
+          fi
 
       - name: Publish
+        if: steps.gate.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk ${{ matrix.apk }}
-          gh release upload android-test ${{ matrix.apk }} --clobber
-          gh release edit android-test --notes "Build ${{ github.run_number }} from ${GITHUB_SHA::7}. API: ${VEIL_API_BASE}. veil.apk = release, veil-test.apk = test (server address can be changed in Settings)."
+          gh release upload android-test ${{ matrix.file }} --clobber
+          gh release edit android-test --notes "Build ${{ github.run_number }} (version code ${{ github.run_number }}) from ${GITHUB_SHA::7}. API: ${VEIL_API_BASE}. raaz.apk = release, raaz-test.apk = test (server address can be changed in Settings), raaz-play.aab = Google Play bundle."
 
       - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.skip == 'false'
         with:
-          name: ${{ matrix.apk }}
-          path: android-app/${{ matrix.apk }}
-          retention-days: 14
+          name: ${{ matrix.file }}
+          path: android-app/${{ matrix.file }}
+          retention-days: 30
