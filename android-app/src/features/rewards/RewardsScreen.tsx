@@ -7,28 +7,20 @@ import { colors } from '../../theme/colors';
 
 type RewardsScreenProps = {
   balance: number;
-  adsLeft: number;
-  adsLimit: number;
-  minutesPerAd: number;
-  busy: boolean;
-  message: { tone: 'success' | 'info' | 'error'; text: string } | null;
+  dailyMinutes: number;
+  refillIn: string;
   onBack: () => void;
-  onWatchAd: () => void;
 };
 
 export function RewardsScreen({
   balance,
-  adsLeft,
-  adsLimit,
-  minutesPerAd,
-  busy,
-  message,
+  dailyMinutes,
+  refillIn,
   onBack,
-  onWatchAd,
 }: RewardsScreenProps) {
   return (
     <Screen contentStyle={styles.content}>
-      <Header title="Get more time" onBack={onBack} />
+      <Header title="Free time" onBack={onBack} />
       <View style={styles.main}>
         <View style={styles.clockBadge}>
           <Feather name="clock" size={25} color={colors.accent} />
@@ -38,28 +30,20 @@ export function RewardsScreen({
         <View style={styles.rewardCard}>
           <View style={styles.rewardAmount}>
             <Feather name="plus" size={29} color={colors.accent} />
-            <Text style={styles.amount}>{minutesPerAd} min</Text>
+            <Text style={styles.amount}>{dailyMinutes} min</Text>
           </View>
-          <Text style={styles.rewardDescription}>for watching one short ad</Text>
+          <Text style={styles.rewardDescription}>free, every day</Text>
         </View>
         <View style={styles.limitPill}>
-          <Feather name="gift" size={16} color={colors.secondary} />
-          <Text style={styles.limitText}>{adsLeft} of {adsLimit} ads left today</Text>
+          <Feather name="refresh-cw" size={16} color={colors.secondary} />
+          <Text style={styles.limitText}>Next refill in {refillIn}</Text>
         </View>
-        {message && (
-          <View accessibilityLiveRegion="polite" style={styles.success}>
-            <Feather name={message.tone === 'success' ? 'check-circle' : message.tone === 'error' ? 'alert-circle' : 'clock'} size={18} color={message.tone === 'error' ? colors.danger : colors.accent} />
-            <Text style={styles.successText}>{message.text}</Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.footer}>
-        <Button disabled={adsLeft === 0 || busy} onPress={onWatchAd}>
-          {adsLeft === 0 ? 'Daily limit reached' : busy ? 'Please wait…' : 'Watch ad'}
-        </Button>
+        <Button onPress={onBack}>OK</Button>
         <Text style={styles.disclaimer}>
-          Minutes are added after our server confirms the ad. This usually takes a few seconds.
+          Your balance is filled up to {dailyMinutes} minutes once a day. Minutes are used only while connected.
         </Text>
       </View>
     </Screen>

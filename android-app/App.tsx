@@ -291,9 +291,20 @@ function VeilApp() {
     void SecureStore.setItemAsync(PROTOCOL_KEY, p);
   };
 
-  // Ads are added in the next build (AdMob); the screen already shows the real limits.
-  const [rewardMessage, setRewardMessage] = useState<{ tone: 'success' | 'info' | 'error'; text: string } | null>(null);
-  const watchAd = () => setRewardMessage({ tone: 'info', text: 'Ads arrive in the next test build. Ask the admin for minutes meanwhile.' });
+  // A slow clock for the "refills in" text when not connected (connected: it ticks every second).
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Daily free minutes refill at midnight UTC (the server does it on the first request of the day).
+  const dailyMinutes = appConfig?.dailyFreeMinutes ?? 60;
+  const refillIn = useMemo(() => {
+    const next = appConfig?.nextDailyRefillAt ? new Date(appConfig.nextDailyRefillAt).getTime() : 0;
+    const at = next > now ? next : Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1);
+    const mins = Math.max(1, Math.ceil((at - now) / 60000));
+    return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+  }, [appConfig, now]);
 
   // Balance counts down locally between server checks while connected.
   const balanceSeconds = useMemo(() => {
@@ -301,9 +312,6 @@ function VeilApp() {
     return connection === 'connected' ? Math.max(0, base - Math.floor((now - meAt) / 1000)) : base;
   }, [me, connection, now, meAt]);
   const balanceMinutes = Math.floor(balanceSeconds / 60);
-  const adsLimit = me?.adsLimit ?? appConfig?.maxAdsPerDay ?? 10;
-  const adsLeft = Math.max(0, adsLimit - (me?.adsToday ?? 0));
-  const minutesPerAd = appConfig?.minutesPerAd ?? 30;
 
   if (phase.kind === 'loading') {
     return (
@@ -371,16 +379,7 @@ function VeilApp() {
       );
     case 'rewards':
       return (
-        <RewardsScreen
-          balance={balanceMinutes}
-          adsLeft={adsLeft}
-          adsLimit={adsLimit}
-          minutesPerAd={minutesPerAd}
-          busy={false}
-          message={rewardMessage}
-          onBack={backToHome}
-          onWatchAd={watchAd}
-        />
+        <RewardsScreen balance={balanceMinutes} dailyMinutes={dailyMinutes} refillIn={refillIn} onBack={backToHome} />
       );
     case 'settings':
       return (
@@ -401,7 +400,7 @@ function VeilApp() {
         />
       );
     case 'outOfTime':
-      return <OutOfTimeScreen adsLeft={adsLeft} minutesPerAd={minutesPerAd} onWatchAd={() => { setRoute('rewards'); watchAd(); }} onNotNow={backToHome} />;
+      return <OutOfTimeScreen dailyMinutes={dailyMinutes} refillIn={refillIn} onNotNow={backToHome} />;
     case 'connectionError':
       return (
         <ConnectionErrorScreen
@@ -432,10 +431,7 @@ function VeilApp() {
             setRoute('locations');
             void loadRegions().catch(() => undefined);
           }}
-          onOpenRewards={() => {
-            setRewardMessage(null);
-            setRoute('rewards');
-          }}
+          onOpenRewards={() => setRoute('rewards')}
           onOpenSettings={() => setRoute('settings')}
           onOpenConnectionError={() => setRoute('connectionError')}
         />

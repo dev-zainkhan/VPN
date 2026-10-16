@@ -9,7 +9,7 @@
       "package": "com.raazvpn.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/adaptive-icon.png",
-        "backgroundColor": "#0B141B"
+        "backgroundColor": "#1E1336"
       }
     },
     "icon": "./assets/brand/icon.png",

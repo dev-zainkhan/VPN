@@ -1160,6 +1160,7 @@ function SettingsPage({ me, refreshMe, showToast }: { me: AdminMe; refreshMe: ()
       setForm({
         minutesPerAd: String(s.minutesPerAd),
         starterMinutes: String(s.starterMinutes),
+        dailyFreeMinutes: String(s.dailyFreeMinutes),
         maxAdsPerDay: String(s.maxAdsPerDay),
         lowMinutesWarning: String(s.lowMinutesWarning),
         defaultProtocol: s.defaultProtocol,
@@ -1175,6 +1176,7 @@ function SettingsPage({ me, refreshMe, showToast }: { me: AdminMe; refreshMe: ()
     const body: Settings = {
       minutesPerAd: num(form.minutesPerAd),
       starterMinutes: num(form.starterMinutes),
+      dailyFreeMinutes: num(form.dailyFreeMinutes),
       maxAdsPerDay: num(form.maxAdsPerDay),
       lowMinutesWarning: num(form.lowMinutesWarning),
       defaultProtocol: form.defaultProtocol as Settings['defaultProtocol'],
@@ -1183,6 +1185,7 @@ function SettingsPage({ me, refreshMe, showToast }: { me: AdminMe; refreshMe: ()
     const bad = [
       ['Minutes per ad', body.minutesPerAd, 1, 240],
       ['Starter minutes', body.starterMinutes, 0, 1440],
+      ['Free minutes every day', body.dailyFreeMinutes, 0, 1440],
       ['Ads per device per day', body.maxAdsPerDay, 1, 100],
       ['Low-minutes warning', body.lowMinutesWarning, 1, 120],
     ].find(([, v, lo, hi]) => !Number.isInteger(v) || (v as number) < (lo as number) || (v as number) > (hi as number));
@@ -1215,6 +1218,7 @@ function SettingsPage({ me, refreshMe, showToast }: { me: AdminMe; refreshMe: ()
             <div className="settings-grid">
               <NumberField label="Minutes per ad" suffix="min" help="Credited after AdMob confirms the ad." value={form.minutesPerAd} min="1" max="240" onChange={(v) => set('minutesPerAd', v)} />
               <NumberField label="Starter minutes" suffix="min" help="Given once per phone, on the first install." value={form.starterMinutes} min="0" max="1440" onChange={(v) => set('starterMinutes', v)} />
+              <NumberField label="Free minutes every day" suffix="min" help="Each day (UTC) every phone is filled up to this. 0 turns it off." value={form.dailyFreeMinutes} min="0" max="1440" onChange={(v) => set('dailyFreeMinutes', v)} />
               <NumberField label="Ads per device per day" suffix="ads" help="Caps how much free time one device can earn." value={form.maxAdsPerDay} min="1" max="100" onChange={(v) => set('maxAdsPerDay', v)} />
               <NumberField label="Low-minutes warning" suffix="min" help="When the app shows its warning banner." value={form.lowMinutesWarning} min="1" max="120" onChange={(v) => set('lowMinutesWarning', v)} />
             </div>

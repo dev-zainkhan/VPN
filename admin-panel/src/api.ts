@@ -108,6 +108,7 @@ export type RewardsSummary = {
 export type Settings = {
   minutesPerAd: number;
   starterMinutes: number;
+  dailyFreeMinutes: number;
   maxAdsPerDay: number;
   lowMinutesWarning: number;
   defaultProtocol: 'auto' | 'udp' | 'tcp';

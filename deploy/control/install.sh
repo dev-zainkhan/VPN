@@ -13,6 +13,7 @@ exec > >(tee -a /var/log/veil-control-install.log) 2>&1
 HOST="${1:?host name required}"
 ADMIN_EMAIL="${2:?admin email required}"
 REPO="${VEIL_REPO:-https://github.com/dev-zainkhan/VPN.git}"
+BRANCH="${VEIL_BRANCH:-main}"
 APP=/opt/veil-control
 ENV_FILE=$APP/backend.env
 export DEBIAN_FRONTEND=noninteractive
@@ -40,9 +41,10 @@ fi
 echo "== user and code"
 id veil >/dev/null 2>&1 || useradd --system --create-home --home-dir $APP --shell /usr/sbin/nologin veil
 if [ -d $APP/repo/.git ]; then
-  sudo -u veil git -C $APP/repo pull --ff-only
+  sudo -u veil git -C $APP/repo fetch --depth 1 origin "$BRANCH"
+  sudo -u veil git -C $APP/repo checkout -B "$BRANCH" FETCH_HEAD
 else
-  sudo -u veil git clone --depth 1 "$REPO" $APP/repo
+  sudo -u veil git clone --depth 1 --branch "$BRANCH" "$REPO" $APP/repo
 fi
 
 echo "== database"

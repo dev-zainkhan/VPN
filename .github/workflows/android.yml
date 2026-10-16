@@ -1,9 +1,9 @@
-name: Android builds
+name: Android builds (store version)
 
 # Builds the Android app in GitHub's cloud (nothing to install on a laptop) and publishes it in the
-# "android-test" release, so a phone can always download the newest build from:
-#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/raaz.apk       (release APK)
-#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/raaz-test.apk  (test APK)
+# "store-builds" release, so a phone can always download the newest build from:
+#   https://github.com/dev-zainkhan/VPN/releases/download/store-builds/raaz.apk       (release APK)
+#   https://github.com/dev-zainkhan/VPN/releases/download/store-builds/raaz-test.apk  (test APK)
 # and, when the upload key secrets are set, the Google Play bundle raaz-play.aab (signed with the
 # upload key; Google re-signs it with the app signing key).
 #
@@ -11,9 +11,11 @@ name: Android builds
 #   RAAZ_UPLOAD_KEYSTORE_B64  base64 of the upload keystore (.jks)
 #   RAAZ_UPLOAD_PASSWORD      its store and key password (alias raaz-upload)
 
+# This is the play-store branch: the store version (no ads yet, daily free minutes).
+# Its builds go to the "store-builds" release, never to the official app's "android-test" release.
 on:
   push:
-    branches: [main]
+    branches: [play-store]
     paths:
       - 'android-app/**'
       - '.github/workflows/android.yml'
@@ -23,7 +25,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-apk
+  group: android-${{ github.ref_name }}
   cancel-in-progress: true
 
 env:
@@ -35,15 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Make sure the android-test release exists
+      - name: Make sure the store-builds release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view android-test >/dev/null 2>&1 || \
-            gh release create android-test --prerelease --title "Android builds" --notes "Building…"
+          gh release view store-builds >/dev/null 2>&1 || \
+            gh release create store-builds --prerelease --title "Raaz VPN store builds" --notes "Building…"
           # Files from before the rename to Raaz VPN.
-          gh release delete-asset android-test veil.apk -y 2>/dev/null || true
-          gh release delete-asset android-test veil-test.apk -y 2>/dev/null || true
+          gh release delete-asset store-builds veil.apk -y 2>/dev/null || true
+          gh release delete-asset store-builds veil-test.apk -y 2>/dev/null || true
 
   build:
     needs: release-page
@@ -141,8 +143,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload android-test ${{ matrix.file }} --clobber
-          gh release edit android-test --notes "Build ${{ github.run_number }} (version code ${{ github.run_number }}) from ${GITHUB_SHA::7}. API: ${VEIL_API_BASE}. raaz.apk = release, raaz-test.apk = test (server address can be changed in Settings), raaz-play.aab = Google Play bundle."
+          gh release upload store-builds ${{ matrix.file }} --clobber
+          gh release edit store-builds --notes "Build ${{ github.run_number }} (version code ${{ github.run_number }}) from ${GITHUB_SHA::7}. API: ${VEIL_API_BASE}. raaz.apk = release, raaz-test.apk = test (server address can be changed in Settings), raaz-play.aab = Google Play bundle."
 
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.skip == 'false'

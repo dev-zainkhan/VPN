@@ -6,13 +6,12 @@ import { Screen } from '../../components/Screen';
 import { colors } from '../../theme/colors';
 
 type OutOfTimeScreenProps = {
-  adsLeft: number;
-  minutesPerAd: number;
-  onWatchAd: () => void;
+  dailyMinutes: number;
+  refillIn: string;
   onNotNow: () => void;
 };
 
-export function OutOfTimeScreen({ adsLeft, minutesPerAd, onWatchAd, onNotNow }: OutOfTimeScreenProps) {
+export function OutOfTimeScreen({ dailyMinutes, refillIn, onNotNow }: OutOfTimeScreenProps) {
   return (
     <Screen contentStyle={styles.content}>
       <Header title="Time is up" onBack={onNotNow} />
@@ -20,20 +19,16 @@ export function OutOfTimeScreen({ adsLeft, minutesPerAd, onWatchAd, onNotNow }: 
         <View style={styles.clockOrb}>
           <Feather name="clock" size={40} color={colors.warning} />
         </View>
-        <Text style={styles.title}>You're out of time</Text>
+        <Text style={styles.title}>Today's free time is used up</Text>
         <Text style={styles.description}>
-          Your VPN connection has ended. Watch a short ad to get {minutesPerAd} more minutes and reconnect.
+          Your VPN connection has ended. You get {dailyMinutes} free minutes again in {refillIn}.
         </Text>
         <View style={styles.balancePill}>
-          <Text style={styles.balanceText}>Balance 0 min · {adsLeft} ads left today</Text>
+          <Text style={styles.balanceText}>Balance 0 min · refills in {refillIn}</Text>
         </View>
       </View>
       <View style={styles.actions}>
-        <Button disabled={adsLeft === 0} onPress={onWatchAd}>
-          {adsLeft === 0 ? 'Daily limit reached' : `Watch ad · +${minutesPerAd} min`}
-        </Button>
-        <Button onPress={onNotNow} variant="ghost">Not now</Button>
-        <Text style={styles.demoNote}>Ad rewards are simulated in this UI preview.</Text>
+        <Button onPress={onNotNow}>OK</Button>
       </View>
     </Screen>
   );

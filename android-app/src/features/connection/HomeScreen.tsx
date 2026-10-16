@@ -66,8 +66,8 @@ export function HomeScreen({
           onPress={onOpenRewards}
           style={styles.rewardButton}
         >
-          <Feather name="plus" size={21} color={colors.accent} />
-          <Text style={styles.rewardButtonText}>Get more time</Text>
+          <Feather name="sun" size={21} color={colors.accent} />
+          <Text style={styles.rewardButtonText}>Free daily</Text>
         </Pressable>
       </View>
 

@@ -1,11 +1,10 @@
-import { Feather } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.brand}>
-      <Feather name="shield" size={compact ? 26 : 30} color={colors.accent} />
+      <Image source={require('../../assets/brand/icon.png')} style={compact ? styles.compactLogo : styles.logo} />
       <Text style={[styles.name, compact && styles.compactName]}>Raaz</Text>
     </View>
   );
@@ -26,4 +25,6 @@ const styles = StyleSheet.create({
   compactName: {
     fontSize: 22,
   },
+  logo: { width: 36, height: 36, borderRadius: 10 },
+  compactLogo: { width: 30, height: 30, borderRadius: 8 },
 });

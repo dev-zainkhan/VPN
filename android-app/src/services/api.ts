@@ -15,6 +15,8 @@ export type AppConfig = {
   minutesPerAd: number;
   maxAdsPerDay: number;
   lowMinutesWarningSeconds: number;
+  dailyFreeMinutes: number;
+  nextDailyRefillAt: string;
   defaultProtocol: 'auto' | 'udp' | 'tcp';
   supportEmail: string | null;
   admobAdUnitId: string;

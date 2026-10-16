@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, StyleSheet, Text, View } from 'react-native';
+import { getApiBase } from '../../services/config';
 import { Brand } from '../../components/Brand';
 import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
@@ -12,7 +13,7 @@ type WelcomeScreenProps = {
 const benefits = [
   { icon: 'user-x' as const, title: 'No sign-up', detail: "Open the app and connect. That's it." },
   { icon: 'eye-off' as const, title: 'No activity logs', detail: 'We never record the sites you visit.' },
-  { icon: 'play-circle' as const, title: 'Watch ads, earn time', detail: 'Each short ad adds free VPN minutes.' },
+  { icon: 'sun' as const, title: 'Free every day', detail: 'Your free VPN minutes refill every day.' },
 ];
 
 export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
@@ -21,11 +22,11 @@ export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
       <Brand />
       <View style={styles.hero}>
         <View style={styles.heroOrb}>
-          <Feather name="shield" size={46} color={colors.accent} />
+          <Image source={require('../../../assets/brand/icon.png')} style={{ width: 96, height: 96, borderRadius: 26 }} />
         </View>
-        <Text style={styles.headline}>Private internet,{'\n'}free with a few ads.</Text>
+        <Text style={styles.headline}>Private internet,{'\n'}free every day.</Text>
         <Text style={styles.subheadline}>
-          Connect in one tap. Watch a short ad whenever you need more time.
+          Connect in one tap. No account, no activity logs.
         </Text>
       </View>
 
@@ -55,7 +56,7 @@ export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
           {'\n'}By continuing you agree to the{' '}
           <Text
             accessibilityRole="link"
-            onPress={() => Alert.alert('Terms of use', 'Terms will be available when the app is connected to its service.')}
+            onPress={() => { Linking.openURL(`${getApiBase()}/terms.html`).catch(() => undefined); }}
             style={styles.link}
           >
             Terms
@@ -63,7 +64,7 @@ export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
           and{' '}
           <Text
             accessibilityRole="link"
-            onPress={() => Alert.alert('Privacy policy', 'Privacy details will be available when the app is connected to its service.')}
+            onPress={() => { Linking.openURL(`${getApiBase()}/privacy.html`).catch(() => undefined); }}
             style={styles.link}
           >
             Privacy Policy
