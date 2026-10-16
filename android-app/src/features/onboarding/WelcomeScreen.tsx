@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Image, Linking, StyleSheet, Text, View } from 'react-native';
-import { getApiBase } from '../../services/config';
+import { legalSite } from '../../services/config';
 import { Brand } from '../../components/Brand';
 import { Button } from '../../components/Button';
 import { Screen } from '../../components/Screen';
@@ -56,7 +56,7 @@ export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
           {'\n'}By continuing you agree to the{' '}
           <Text
             accessibilityRole="link"
-            onPress={() => { Linking.openURL(`${getApiBase()}/terms.html`).catch(() => undefined); }}
+            onPress={() => { Linking.openURL(`${legalSite}/terms.html`).catch(() => undefined); }}
             style={styles.link}
           >
             Terms
@@ -64,7 +64,7 @@ export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
           and{' '}
           <Text
             accessibilityRole="link"
-            onPress={() => { Linking.openURL(`${getApiBase()}/privacy.html`).catch(() => undefined); }}
+            onPress={() => { Linking.openURL(`${legalSite}/privacy.html`).catch(() => undefined); }}
             style={styles.link}
           >
             Privacy Policy

@@ -8,6 +8,8 @@ Files for the store are built by GitHub Actions into the `store-builds` release:
 | `raaz-play.aab` | Upload this to Play Console (signed with the upload key) |
 | `raaz.apk` | Install on phones directly (friends, quick checks) |
 
+Privacy policy and terms are on GitHub Pages (branch `gh-pages`): https://dev-zainkhan.github.io/VPN/privacy.html
+
 Upload key: `C:\Users\asada\raaz-upload-key\` (keep a backup; password in the README file there).
 In Play Console keep **Play App Signing** on (default): Google keeps the app signing key, we only use the upload key.
 
@@ -41,7 +43,7 @@ Play Console → **Create app**
 >
 > Your free minutes refill every day. Minutes are used only while you are connected.
 >
-> Privacy policy: https://13-126-168-194.sslip.io/privacy.html
+> Privacy policy: https://dev-zainkhan.github.io/VPN/privacy.html
 >
 > WireGuard is a registered trademark of Jason A. Donenfeld.
 
@@ -57,7 +59,7 @@ Category: **Tools**. Contact email: the support email. Website: optional.
 
 | Section | Answer |
 | --- | --- |
-| Privacy policy | https://13-126-168-194.sslip.io/privacy.html |
+| Privacy policy | https://dev-zainkhan.github.io/VPN/privacy.html |
 | App access | All functionality is available without special access (no login) |
 | Ads | **No, my app does not contain ads** (this version). Change to Yes in the update that adds ads |
 | Content rating | Questionnaire: category "Utility, productivity, communication or other"; answer No to violence, sexual content, profanity, drugs, gambling; "Does the app allow users to interact or exchange content?" No; "Does it share the user's location?" No → expected rating: Everyone / PEGI 3 |

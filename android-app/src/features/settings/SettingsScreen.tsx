@@ -4,6 +4,7 @@ import { Alert, Linking, Pressable, StyleSheet, Text, TextInput, View } from 're
 import { Button } from '../../components/Button';
 import { Header } from '../../components/Header';
 import { Screen } from '../../components/Screen';
+import { legalSite } from '../../services/config';
 import { colors } from '../../theme/colors';
 import type { Protocol } from '../../types';
 
@@ -102,12 +103,12 @@ export function SettingsScreen({
       <View style={styles.card}>
         <LinkRow
           title="Privacy policy"
-          onPress={() => { Linking.openURL(`${apiBase}/privacy.html`).catch(() => undefined); }}
+          onPress={() => { Linking.openURL(`${legalSite}/privacy.html`).catch(() => undefined); }}
         />
         <View style={styles.divider} />
         <LinkRow
           title="Terms of use"
-          onPress={() => { Linking.openURL(`${apiBase}/terms.html`).catch(() => undefined); }}
+          onPress={() => { Linking.openURL(`${legalSite}/terms.html`).catch(() => undefined); }}
         />
       </View>
 

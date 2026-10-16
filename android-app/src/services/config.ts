@@ -9,6 +9,9 @@ export const isTestBuild = extra.testBuild !== false;
 export const defaultApiBase = extra.apiBase ?? 'https://13-126-168-194.sslip.io';
 const API_KEY = 'veil.apiBase';
 
+// Privacy policy and terms, hosted on GitHub Pages so they stay up when servers change.
+export const legalSite = 'https://dev-zainkhan.github.io/VPN';
+
 let apiBase = defaultApiBase;
 
 export async function loadApiBase(): Promise<string> {
