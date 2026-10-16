@@ -28,7 +28,7 @@ jobs:
         working-directory: android-app
     env:
       # Test builds talk to the dev laptop on the same Wi-Fi; change it in the app's Settings too.
-      VEIL_API_BASE: ${{ vars.VEIL_API_BASE || 'http://192.168.18.84:3000' }}
+      VEIL_API_BASE: ${{ vars.VEIL_API_BASE || 'http://192.168.1.27:3000' }}
       VEIL_TEST_BUILD: 'true'
       VEIL_BUILD_NUMBER: ${{ github.run_number }}
     steps:

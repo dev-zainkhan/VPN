@@ -6,7 +6,7 @@ const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
 
 // Test builds can point the app at another API (for example the laptop's new Wi-Fi address).
 export const isTestBuild = extra.testBuild !== false;
-export const defaultApiBase = extra.apiBase ?? 'http://192.168.18.84:3000';
+export const defaultApiBase = extra.apiBase ?? 'http://192.168.1.27:3000';
 const API_KEY = 'veil.apiBase';
 
 let apiBase = defaultApiBase;

@@ -13,7 +13,7 @@ https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil-test.apk
 download it and install it (allow "Install unknown apps" for the browser or the GitHub app once).
 A newer build installs over the old one and keeps the app's data.
 
-Test builds talk to the API at `http://192.168.18.84:3000` (the dev laptop on the same Wi-Fi).
+Test builds talk to the API at `http://192.168.1.27:3000` (the dev laptop on the same Wi-Fi).
 If the laptop gets another address, change it in the app: **Settings → Test build → Server address**,
 or set the repository variable `VEIL_API_BASE` and run the workflow again.
 

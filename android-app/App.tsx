@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Application from 'expo-application';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
@@ -61,6 +61,7 @@ function VeilApp() {
   const [now, setNow] = useState(Date.now());
   const [notice, setNotice] = useState<string | null>(null);
   const [lastLocationName, setLastLocationName] = useState('This location');
+  const [addressDraft, setAddressDraft] = useState('');
   const connectingRef = useRef(false);
   const connectionRef = useRef<ConnectionStatus>('disconnected');
   connectionRef.current = connection;
@@ -116,6 +117,7 @@ function VeilApp() {
       setPhase({ kind: 'ready' });
       void loadRegions().catch(() => undefined);
     } catch (e) {
+      setAddressDraft(getApiBase());
       setPhase({ kind: 'offline', message: messageFor(e) });
     }
   }, [loadRegions, refreshMe]);
@@ -130,6 +132,7 @@ function VeilApp() {
       setIdentity(await ensureIdentity());
       await start();
     } catch (e) {
+      setAddressDraft(getApiBase());
       setPhase({ kind: 'offline', message: messageFor(e) });
     }
   };
@@ -295,9 +298,37 @@ function VeilApp() {
       <View style={styles.center}>
         <Text style={styles.title}>Can't reach Veil</Text>
         <Text style={styles.body}>{phase.message}</Text>
-        {isTestBuild && <Text style={styles.small}>Server: {getApiBase()}</Text>}
+        {isTestBuild && (
+          <View style={styles.actions}>
+            <Text style={styles.small}>Server address (test build)</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              onChangeText={setAddressDraft}
+              placeholder="http://192.168.1.20:3000"
+              placeholderTextColor={colors.muted}
+              style={styles.input}
+              value={addressDraft}
+            />
+          </View>
+        )}
         <View style={styles.actions}>
-          <Button onPress={() => void start()}>Try again</Button>
+          <Button
+            onPress={() => {
+              const changed = isTestBuild && addressDraft.trim() && addressDraft.trim() !== getApiBase();
+              if (!changed) {
+                void start();
+                return;
+              }
+              setApiBase(addressDraft).then(
+                () => start(),
+                (e: Error) => Alert.alert('Check the address', e.message),
+              );
+            }}
+          >
+            Try again
+          </Button>
         </View>
       </View>
     );
@@ -406,4 +437,13 @@ const styles = StyleSheet.create({
   body: { color: colors.secondary, fontSize: 15, lineHeight: 21, textAlign: 'center' },
   small: { color: colors.muted, fontSize: 12, marginTop: 12, textAlign: 'center' },
   actions: { alignSelf: 'stretch', marginTop: 24 },
+  input: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.text,
+    paddingHorizontal: 14,
+    marginTop: 8,
+  },
 });

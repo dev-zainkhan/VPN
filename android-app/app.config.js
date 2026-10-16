@@ -11,7 +11,7 @@ module.exports = ({ config }) => ({
     versionCode: Number(process.env.VEIL_BUILD_NUMBER ?? 1),
   },
   extra: {
-    apiBase: process.env.VEIL_API_BASE ?? 'http://192.168.18.84:3000',
+    apiBase: process.env.VEIL_API_BASE ?? 'http://192.168.1.27:3000',
     testBuild,
   },
   plugins: [
