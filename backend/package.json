@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ec2": "3.1152.0",
+    "@aws-sdk/client-freetier": "3.1152.0",
     "@aws-sdk/client-sts": "3.1152.0",
     "@prisma/client": "5.22.0",
     "bcryptjs": "2.4.3",

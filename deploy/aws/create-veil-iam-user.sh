@@ -2,6 +2,7 @@
 # Run in AWS CloudShell (signed in as the account owner or an admin).
 # Creates IAM user "veil-orchestrator" with the spec 12.1 policy and one access key,
 # and saves the key to ~/veil-keys.json. It launches nothing and costs nothing.
+# Safe to run again: it updates the policy and makes a new key only if the user has none.
 set -euo pipefail
 U=veil-orchestrator
 
@@ -35,6 +36,12 @@ cat > /tmp/veil-orchestrator-policy.json <<'EOF'
       "Resource": "*"
     },
     {
+      "Sid": "VeilReadFreePlan",
+      "Effect": "Allow",
+      "Action": ["freetier:GetAccountPlanState"],
+      "Resource": "*"
+    },
+    {
       "Sid": "VeilManageOwnInstances",
       "Effect": "Allow",
       "Action": ["ec2:RebootInstances", "ec2:TerminateInstances"],
@@ -48,11 +55,10 @@ aws iam put-user-policy --user-name "$U" --policy-name veil-orchestrator \
   --policy-document file:///tmp/veil-orchestrator-policy.json
 echo "Policy veil-orchestrator attached"
 
-# AWS allows two keys per user.
 n=$(aws iam list-access-keys --user-name "$U" --query 'length(AccessKeyMetadata)' --output text)
-if [ "$n" -ge 2 ]; then
-  echo "STOP: $U already has 2 access keys. Delete an old one in IAM > Users > $U > Security credentials, then run this again."
-  exit 1
+if [ "$n" -ge 1 ]; then
+  echo "DONE. Policy updated; the existing access key keeps working (no new key made)."
+  exit 0
 fi
 
 aws iam create-access-key --user-name "$U" \

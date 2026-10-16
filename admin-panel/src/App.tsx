@@ -38,6 +38,7 @@ import {
 import {
   api,
   ApiError,
+  creditsText,
   errorText,
   setSessionLostHandler,
   UUID_RE,
@@ -618,7 +619,7 @@ function DashboardPage({ data, error, alerts, dismissAlert, onNavigate, onOpenFa
               {data.usage.length === 0 && <p className="muted-text">No AWS accounts yet.</p>}
               {data.usage.map((u) => (
                 <div className="usage-row" key={u.accountId}>
-                  <strong>{u.nickname}</strong>
+                  <div><strong>{u.nickname}</strong><CreditsLine credits={u.credits} /></div>
                   <UsageMeter value={u.computeHours} max={u.computeLimitHours} unit="h" credits />
                   <UsageMeter value={u.dataOutGb} max={u.dataOutLimitGb} unit="GB" />
                 </div>
@@ -685,13 +686,23 @@ function AccountsPage({ onOpen, confirm, showToast, showError, refreshKey }: {
       <PageHeading title="AWS accounts" description="The AWS accounts your servers run in. Keys are encrypted before they're stored." action={<Button variant="primary" icon={<Plus size={17} />} onClick={() => onOpen({ kind: 'add' })}>Add AWS account</Button>} />
       <div className="info-banner"><span className="info-banner-icon"><Shield size={17} /></span><span>Use the <strong>veil-orchestrator</strong> IAM user (EC2 only), never root keys. The script in <code>deploy/aws/create-veil-iam-user.sh</code> creates it in CloudShell.</span></div>
       {list.error && <LoadError error={list.error} onRetry={() => void list.reload()} />}
+      {accounts.some((a) => !a.credits.ok && a.credits.reason === 'missing_permission') && (
+        <div className="inline-alert inline-alert-warning">
+          <AlertTriangle size={16} />
+          <span>To show the free credits left, the IAM user needs one more read-only permission. In the AWS console open CloudShell and run the commands in <code>deploy/aws/create-veil-iam-user.sh</code> again (it only adds permissions), then press Refresh here.</span>
+        </div>
+      )}
       <section className="card table-card">
         <div className="table-scroll">
           <table className="admin-table accounts-table">
             <thead><tr><th>Account</th><th>Access key</th><th>Status</th><th className="align-center">Servers</th><th>Compute this month</th><th>Data out this month</th><th aria-label="Actions" /></tr></thead>
             <tbody>{accounts.map((a) => (
               <tr key={a.id}>
-                <td><div className="table-primary">{a.nickname}</div><div className="table-secondary">{a.awsAccountNumber} · {PLAN_LABELS[a.freeTierPlan]}</div></td>
+                <td>
+                  <div className="table-primary">{a.nickname}</div>
+                  <div className="table-secondary">{a.awsAccountNumber} · {PLAN_LABELS[a.freeTierPlan]}</div>
+                  <CreditsLine credits={a.credits} />
+                </td>
                 <td><code className="mono">{a.accessKeyHint}</code></td>
                 <td>
                   <StatusPill tone={accountTone(a.status)}>{busy === a.id ? 'Checking…' : accountStatusLabel[a.status]}</StatusPill>
@@ -781,6 +792,12 @@ function useRowMenu() {
   };
   const style: React.CSSProperties | undefined = menu ? { position: 'fixed', top: menu.top, right: menu.right, zIndex: 60 } : undefined;
   return { openId: menu?.id ?? null, toggle, close: () => setMenu(null), style };
+}
+
+function CreditsLine({ credits }: { credits: Account['credits'] }) {
+  const { text, tone } = creditsText(credits);
+  const color = tone === 'warn' ? '#865a15' : tone === 'ok' ? '#16704e' : '#8a948f';
+  return <div className="table-secondary" style={{ color, fontWeight: tone === 'muted' ? 400 : 600 }}>{text}</div>;
 }
 
 function TabBar<T extends string>({ tabs, active, onChange }: { tabs: { value: T; label: string; count?: number }[]; active: T; onChange: (value: T) => void }) {

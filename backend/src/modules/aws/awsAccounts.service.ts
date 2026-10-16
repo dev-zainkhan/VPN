@@ -5,6 +5,7 @@ import { encrypt } from '../../core/crypto';
 import { prisma } from '../../core/db';
 import { AppError } from '../../core/errors';
 import { awsCall, ec2With, keysOf, stsFor, type AwsKeys } from './awsClient';
+import { accountCredits, forgetCredits } from './credits';
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -97,9 +98,10 @@ export async function accountUsage(account: AwsAccount, now = new Date()) {
 
 // 13.3 Account object. Never the key ID or secret.
 export async function toAccount(account: AwsAccount) {
-  const [serverCount, usage] = await Promise.all([
+  const [serverCount, usage, credits] = await Promise.all([
     prisma.server.count({ where: { awsAccountId: account.id, status: { not: 'terminated' } } }),
     accountUsage(account),
+    accountCredits(account),
   ]);
   return {
     id: account.id,
@@ -113,6 +115,8 @@ export async function toAccount(account: AwsAccount) {
     createdAt: account.createdAt.toISOString(),
     serverCount,
     usage,
+    // Free plan credits left, straight from AWS (cached for an hour).
+    credits,
   };
 }
 
@@ -176,6 +180,7 @@ export async function updateKeys(id: string, keys: AwsKeys) {
     where: { id },
     data: { ...keyColumns(keys), status: 'working', lastError: null, lastCheckedAt: new Date() },
   });
+  forgetCredits(id);
   return toAccount(updated);
 }
 
@@ -183,6 +188,7 @@ export async function updateKeys(id: string, keys: AwsKeys) {
 export async function testStoredKeys(id: string) {
   const account = await findAccount(id);
   const result = await testKeys(keysOf(account), account);
+  forgetCredits(id);
   await prisma.awsAccount.update({
     where: { id },
     data: {

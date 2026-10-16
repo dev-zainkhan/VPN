@@ -16,6 +16,10 @@ export type Usage = {
   dataOutLimitGb: number | null;
 };
 
+export type Credits =
+  | { ok: true; planType: string; planStatus: string; remaining: number | null; currency: string | null; expiresAt: string | null; checkedAt: string }
+  | { ok: false; reason: 'missing_permission' | 'error'; message: string; checkedAt: string };
+
 export type Account = {
   id: string;
   nickname: string;
@@ -28,6 +32,7 @@ export type Account = {
   createdAt: string;
   serverCount: number;
   usage: Usage;
+  credits: Credits;
 };
 
 export type KeyTest = { ok: true; awsAccountNumber: string; regions: string[]; freeTierTypes: string[] };
@@ -129,9 +134,19 @@ export type Dashboard = {
     adsToday: number;
     minutesGrantedToday: number;
   };
-  usage: (Usage & { accountId: string; nickname: string })[];
+  usage: (Usage & { accountId: string; nickname: string; credits: Credits })[];
   regions: { code: string; displayName: string; servers: number; online: number }[];
 };
+
+// "$117.82 left · free plan until 17 Feb 2027", or why it is unknown.
+export function creditsText(c: Credits): { text: string; tone: 'ok' | 'warn' | 'muted' } {
+  if (!c.ok) return { text: c.reason === 'missing_permission' ? 'Credits: needs a permission (see AWS accounts)' : 'Credits: AWS did not answer', tone: 'muted' };
+  if (c.planType !== 'FREE') return { text: 'Paid plan', tone: 'muted' };
+  const money = c.remaining === null ? 'unknown' : `${c.currency === 'USD' || !c.currency ? '$' : `${c.currency} `}${c.remaining.toFixed(2)}`;
+  const until = c.expiresAt ? ` · until ${new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : '';
+  const days = c.expiresAt ? (new Date(c.expiresAt).getTime() - Date.now()) / 86400000 : Infinity;
+  return { text: `${money} credits left${until}`, tone: (c.remaining ?? 0) < 20 || days < 30 ? 'warn' : 'ok' };
+}
 
 export class ApiError extends Error {
   constructor(
