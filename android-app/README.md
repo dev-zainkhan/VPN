@@ -3,19 +3,24 @@
 React Native (Expo SDK 54) app with a native WireGuard tunnel. Screens follow
 `../docs/front end/VPN App  MVP Screens.pdf`; the API is section 8 of the backend spec.
 
-## Get a test build (no Android tools needed)
+## Get the APKs (no Android tools needed)
 
 Every push to `main` that touches `android-app/` builds the app in GitHub Actions
-(`.github/workflows/android.yml`) and replaces the APK in the `android-test` release.
+(`.github/workflows/android.yml`) and replaces two APKs in the `android-test` release:
 
-On the phone, open
-https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil-test.apk,
-download it and install it (allow "Install unknown apps" for the browser or the GitHub app once).
+| APK | Link | For |
+| --- | --- | --- |
+| Release | https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil.apk | Friends and testers |
+| Test | https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil-test.apk | Development: Settings → Test build → Server address can point it at another API |
+
+Open the link on the phone, download, install (allow "Install unknown apps" once).
 A newer build installs over the old one and keeps the app's data.
 
-Test builds talk to the API at `http://192.168.1.27:3000` (the dev laptop on the same Wi-Fi).
-If the laptop gets another address, change it in the app: **Settings → Test build → Server address**,
-or set the repository variable `VEIL_API_BASE` and run the workflow again.
+Both talk to the API at `https://13-126-168-194.sslip.io` (the AWS test control server).
+Set the repository variable `VEIL_API_BASE` and run the workflow again to change it.
+
+Both are signed with the standard debug key, which is fine for testing. Google Play needs its own
+upload key, made in the publishing step.
 
 ## How it works
 

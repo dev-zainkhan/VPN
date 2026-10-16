@@ -1,8 +1,10 @@
-name: Android test APK
+name: Android APKs
 
-# Builds the Android app in GitHub's cloud (nothing to install on a laptop) and publishes it as
-# the "android-test" release, so the phone can always download the newest test build from:
-# https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil-test.apk
+# Builds the Android app in GitHub's cloud (nothing to install on a laptop) and publishes two APKs
+# in the "android-test" release; a phone can always download the newest ones from:
+#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil.apk       (release)
+#   https://github.com/dev-zainkhan/VPN/releases/download/android-test/veil-test.apk  (test)
+# The test APK can switch to another API address in Settings; the release APK cannot.
 
 on:
   push:
@@ -19,17 +21,40 @@ concurrency:
   group: android-apk
   cancel-in-progress: true
 
+env:
+  # The Veil API both APKs talk to. Set the repository variable VEIL_API_BASE to change it.
+  VEIL_API_BASE: ${{ vars.VEIL_API_BASE || 'https://13-126-168-194.sslip.io' }}
+
 jobs:
+  release-page:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make sure the android-test release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view android-test >/dev/null 2>&1 || \
+            gh release create android-test --prerelease --title "Android builds" --notes "Building…"
+
   build:
+    needs: release-page
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - variant: release
+            test_build: 'false'
+            apk: veil.apk
+          - variant: test
+            test_build: 'true'
+            apk: veil-test.apk
     defaults:
       run:
         working-directory: android-app
     env:
-      # Test builds talk to the dev laptop on the same Wi-Fi; change it in the app's Settings too.
-      VEIL_API_BASE: ${{ vars.VEIL_API_BASE || 'http://192.168.1.27:3000' }}
-      VEIL_TEST_BUILD: 'true'
+      VEIL_TEST_BUILD: ${{ matrix.test_build }}
       VEIL_BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
@@ -61,21 +86,16 @@ jobs:
         # 64-bit ARM covers practically every phone in use; one architecture keeps the build fast.
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
 
-      - name: Publish to the android-test release
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk veil-test.apk
-          NOTES="Test build ${{ github.run_number }} from ${GITHUB_SHA::7}. API address: ${VEIL_API_BASE}"
-          if gh release view android-test >/dev/null 2>&1; then
-            gh release upload android-test veil-test.apk --clobber
-            gh release edit android-test --notes "$NOTES"
-          else
-            gh release create android-test veil-test.apk --prerelease --title "Android test build" --notes "$NOTES"
-          fi
+          cp android/app/build/outputs/apk/release/app-release.apk ${{ matrix.apk }}
+          gh release upload android-test ${{ matrix.apk }} --clobber
+          gh release edit android-test --notes "Build ${{ github.run_number }} from ${GITHUB_SHA::7}. API: ${VEIL_API_BASE}. veil.apk = release, veil-test.apk = test (server address can be changed in Settings)."
 
       - uses: actions/upload-artifact@v4
         with:
-          name: veil-test-apk
-          path: android-app/veil-test.apk
+          name: ${{ matrix.apk }}
+          path: android-app/${{ matrix.apk }}
           retention-days: 14
