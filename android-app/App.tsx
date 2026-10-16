@@ -109,7 +109,9 @@ function VeilApp() {
     }
     try {
       setIdentity(await ensureIdentity());
-      const [, cfg] = await Promise.all([refreshMe(), api.config()]);
+      // /me first: if the server no longer knows this device, it registers again before /config.
+      await refreshMe();
+      const cfg = await api.config();
       setAppConfig(cfg);
       if (!saved) setProtocol(cfg.defaultProtocol === 'udp' ? 'UDP' : cfg.defaultProtocol === 'tcp' ? 'TCP' : 'Auto');
       if (VeilVpn.getState() === 'up') {

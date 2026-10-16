@@ -62,6 +62,7 @@ Newest changes at the top of the log.
 ## Log
 
 ### 2026-10-16
+- **Cloud test environment on AWS** (credits): control server `https://13-126-168-194.sslip.io` (API + admin panel + database, HTTPS from Let's Encrypt via sslip.io, installed by `deploy/control/install.sh` in about 2 minutes) and VPN servers in Singapore, Mumbai and Frankfurt (active within a minute). Release and test APKs point at it. Costs about $1.6 a day while all four run.
 - VPN servers on any provider: admin panel → Create server → Any provider gives a one-time install command for any Ubuntu/Debian VPS (guide: `docs/ADD-SERVER.md`). The agent finds its public IP without AWS metadata. Tested on an Ubuntu 22.04 VM with metadata blocked: registered in under a minute, phone connected through it. Plus 10 API edge-case checks.
 - Android app built in the cloud (GitHub Actions) and installed over USB; first real phone connection through a Veil edge server: IP changed to the Mumbai server, minutes debited.
 - Fixed a start-up crash: `@expo/vector-icons` pulled `expo-font` 57 (needs a newer Expo core than SDK 54); pinned `expo-font` ~14.0.12.
