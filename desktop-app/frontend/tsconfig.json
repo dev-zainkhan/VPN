@@ -8,10 +8,9 @@
     "strict": true,
     "noUnusedLocals": true,
     "skipLibCheck": true,
-    "allowJs": true,
     "isolatedModules": true,
     "noEmit": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "wailsjs"]
+  "include": ["src"]
 }
