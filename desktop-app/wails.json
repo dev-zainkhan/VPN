@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Raaz VPN",
+  "outputfilename": "RaazVPN",
+  "frontend:install": "npm install --no-audit --no-fund",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Raaz VPN",
+    "email": "workwithzain02@gmail.com"
+  },
+  "info": {
+    "companyName": "Raaz VPN",
+    "productName": "Raaz VPN",
+    "productVersion": "1.0.0",
+    "copyright": "© 2026 Raaz VPN",
+    "comments": "Free, private VPN"
+  }
+}

@@ -1,0 +1,90 @@
+name: Desktop app (Windows)
+
+# Builds the Windows app in GitHub's cloud and publishes the installer in the "desktop-builds" release:
+#   https://github.com/dev-zainkhan/VPN/releases/download/desktop-builds/RaazVPN-Setup.exe
+# Stack: Wails 2 (Go + WebView2, React UI), wireguard-windows tunnel service, wireguard-nt driver.
+on:
+  push:
+    branches: [main, desktop]
+    paths:
+      - 'desktop-app/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  VEIL_API_BASE: ${{ vars.VEIL_API_BASE || 'https://13-126-168-194.sslip.io' }}
+  WIREGUARD_NT: '0.10.1'
+  WAILS: 'v2.9.2'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Go modules
+        run: go mod tidy && go mod download
+
+      - name: Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${WAILS}
+
+      - name: WireGuard driver library (signed by WireGuard LLC)
+        run: |
+          curl -fsSL -o wgnt.zip "https://download.wireguard.com/wireguard-nt/wireguard-nt-${WIREGUARD_NT}.zip"
+          unzip -q -o wgnt.zip -d wgnt
+          find wgnt -name wireguard.dll
+
+      - name: Build the app
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          wails build -platform windows/amd64 -clean -trimpath \
+            -ldflags "-X main.apiBase=${VEIL_API_BASE} -X main.version=${VERSION}"
+          cp wgnt/wireguard-nt/bin/amd64/wireguard.dll build/bin/
+          ls -la build/bin
+
+      - name: Build the installer
+        run: |
+          MAKENSIS="$(command -v makensis || true)"
+          [ -n "$MAKENSIS" ] || MAKENSIS="/c/Program Files (x86)/NSIS/makensis.exe"
+          if [ ! -x "$MAKENSIS" ]; then choco install nsis -y --no-progress; MAKENSIS="/c/Program Files (x86)/NSIS/makensis.exe"; fi
+          "$MAKENSIS" -V2 -DVERSION="1.0.${{ github.run_number }}" build/windows/installer/raaz.nsi
+          ls -la build/bin
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view desktop-builds >/dev/null 2>&1 || \
+            gh release create desktop-builds --prerelease --title "Raaz VPN for Windows (test builds)" --notes "Building…"
+          cp build/bin/RaazVPN-Setup.exe .
+          gh release upload desktop-builds RaazVPN-Setup.exe --clobber
+          gh release edit desktop-builds --notes "Build ${{ github.run_number }} (version 1.0.${{ github.run_number }}) from ${GITHUB_SHA::7}, branch ${GITHUB_REF_NAME}. API: ${VEIL_API_BASE}. Download RaazVPN-Setup.exe and run it on Windows 10/11 (64-bit). Not code-signed yet: on the blue 'Windows protected your PC' box click More info, then Run anyway."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raaz-windows
+          path: |
+            desktop-app/build/bin/RaazVPN-Setup.exe
+            desktop-app/go.sum
+          retention-days: 30
