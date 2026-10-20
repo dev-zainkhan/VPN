@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const registerBody = z.object({
   abuseKey: z.string().regex(/^[0-9a-f]{64}$/),
-  platform: z.literal('android'),
+  platform: z.enum(['android', 'windows']),
   appVersion: z
     .string()
     .min(1)

@@ -9,6 +9,7 @@ datasource db {
 
 enum DevicePlatform {
   android
+  windows
 }
 
 enum ServerStatus {
