@@ -16,6 +16,21 @@ export async function registerDevice(input: RegisterBody) {
       create: { keyHash, installCount: 1 },
       update: { installCount: { increment: 1 } },
     });
+
+    // Reinstalling clears the app's local token. Rebind the existing device so
+    // its server-side balance is retained instead of creating a zero-balance row.
+    const existing = await tx.device.findFirst({
+      where: { abuseKeyHash: keyHash, platform: input.platform },
+      orderBy: [{ balanceSeconds: 'desc' }, { lastSeenAt: 'desc' }],
+    });
+    if (existing) {
+      const updated = await tx.device.update({
+        where: { id: existing.id },
+        data: { tokenHash: hashToken(deviceToken), appVersion: input.appVersion, lastSeenAt: new Date() },
+      });
+      return { device: updated, blocked: abuseKey.blocked };
+    }
+
     const settings = await getSettings(tx);
 
     let balanceSeconds = 0;
@@ -37,13 +52,13 @@ export async function registerDevice(input: RegisterBody) {
     if (grantStarter) {
       await tx.walletEntry.create({ data: { deviceId: created.id, seconds: balanceSeconds, reason: 'starter' } });
     }
-    return { created, blocked: abuseKey.blocked };
+    return { device: created, blocked: abuseKey.blocked };
   });
 
   return {
-    deviceId: device.created.id,
+    deviceId: device.device.id,
     deviceToken,
-    balanceSeconds: device.created.balanceSeconds,
+    balanceSeconds: device.device.balanceSeconds,
     blocked: device.blocked,
   };
 }
